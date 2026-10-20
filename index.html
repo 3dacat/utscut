@@ -1,0 +1,2442 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Танковая Стрелялка — v4.8 (Десант: залп бомбовых ракет)</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Courier New', monospace; background: #000; }
+        #info { position: absolute; top: 15px; left: 15px; color: #ffaa00; background: rgba(0,0,0,0.8); padding: 10px 18px; border-radius: 8px; pointer-events: none; z-index: 100; font-size: 14px; border: 1px solid rgba(255,170,0,0.5); text-shadow: 0 0 8px rgba(255,170,0,0.5); }
+        #hud { position: absolute; bottom: 25px; left: 0; width: 100%; display: flex; justify-content: center; gap: 16px; color: #ffaa00; font-weight: bold; pointer-events: none; z-index: 100; font-size: 15px; font-family: 'Courier New', monospace; flex-wrap: wrap; padding: 0 10px; box-sizing: border-box; }
+        .hud-item { background: rgba(0,0,0,0.8); padding: 8px 14px; border-radius: 6px; border: 1px solid rgba(255,170,0,0.5); text-shadow: 0 0 10px rgba(255,170,0,0.8); }
+        #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; pointer-events: none; z-index: 50; opacity: 0.9; transition: width 0.15s, height 0.15s; }
+        #crosshair.zoom { width: 70px; height: 70px; }
+        #crosshair.bomb { width: 90px; height: 90px; }
+        #crosshair::before, #crosshair::after { content: ''; position: absolute; background: #ffaa00; box-shadow: 0 0 6px rgba(255,170,0,0.9); }
+        #crosshair.bomb::before, #crosshair.bomb::after { background: #ff3300; box-shadow: 0 0 8px rgba(255,50,0,0.9); }
+        #crosshair::before { top: 50%; left: 0; width: 100%; height: 2px; transform: translateY(-50%); }
+        #crosshair::after { left: 50%; top: 0; height: 100%; width: 2px; transform: translateX(-50%); }
+        #crosshair .dot { position: absolute; top: 50%; left: 50%; width: 6px; height: 6px; background: #ffaa00; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 8px rgba(255,170,0,0.9); }
+        #crosshair.bomb .dot { background: #ff3300; box-shadow: 0 0 10px rgba(255,50,0,0.9); }
+        #helpToggle { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #ffaa00; border: 1px solid rgba(255,170,0,0.6); border-radius: 8px; padding: 10px 22px; font-family: 'Courier New', monospace; font-size: 14px; cursor: pointer; z-index: 150; text-shadow: 0 0 8px rgba(255,170,0,0.6); letter-spacing: 2px; user-select: none; transition: background 0.2s, color 0.2s; }
+        #helpToggle:hover { background: rgba(255,170,0,0.15); color: #ffdd00; }
+        #helpPanel { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); width: 640px; max-width: 92vw; max-height: 78vh; overflow-y: auto; background: rgba(0,0,0,0.93); color: #ddd; border: 1px solid rgba(255,170,0,0.5); border-radius: 10px; padding: 20px 26px; z-index: 150; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.55; display: none; box-shadow: 0 0 40px rgba(255,170,0,0.25); }
+        #helpPanel.open { display: block; }
+        #helpPanel h2 { color: #ffaa00; margin: 0 0 12px 0; font-size: 18px; letter-spacing: 3px; text-align: center; text-shadow: 0 0 12px rgba(255,170,0,0.6); }
+        #helpPanel h3 { color: #ffcc44; margin: 16px 0 8px 0; font-size: 14px; letter-spacing: 1px; border-bottom: 1px solid rgba(255,170,0,0.2); padding-bottom: 4px; }
+        #helpPanel kbd { background: #222; border-radius: 3px; padding: 2px 8px; margin: 0 2px; border: 1px solid #555; color: #ffaa00; font-family: 'Courier New', monospace; font-size: 12px; }
+        #helpPanel .row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px dashed rgba(255,255,255,0.05); }
+        #helpPanel .row .desc { color: #bbb; }
+        #helpPanel .row .val { color: #ffaa00; font-weight: bold; }
+        #helpPanel .note { color: #888; font-style: italic; margin-top: 14px; font-size: 12px; text-align: center; }
+        #helpPanel .closeBtn { display: block; margin: 18px auto 0; padding: 8px 24px; background: rgba(255,170,0,0.12); color: #ffaa00; border: 1px solid rgba(255,170,0,0.6); border-radius: 6px; cursor: pointer; font-family: 'Courier New', monospace; letter-spacing: 2px; transition: background 0.2s; }
+        #helpPanel .closeBtn:hover { background: rgba(255,170,0,0.25); }
+        #fullHelpToggle { position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #ccc; border: 1px solid rgba(200,200,200,0.35); border-radius: 6px; padding: 6px 16px; font-family: 'Courier New', monospace; font-size: 11px; cursor: pointer; z-index: 150; letter-spacing: 1px; user-select: none; transition: background 0.2s, color 0.2s; }
+        #fullHelpToggle:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        #fullHelpPanel { position: absolute; bottom: 115px; left: 50%; transform: translateX(-50%); width: 640px; max-width: 92vw; max-height: 60vh; overflow-y: auto; background: rgba(0,0,0,0.92); color: #ddd; border: 1px solid rgba(200,200,200,0.35); border-radius: 8px; padding: 14px 20px; z-index: 150; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.5; display: none; }
+        #fullHelpPanel.open { display: block; }
+        #fullHelpPanel h4 { color: #ccc; margin: 8px 0 4px 0; font-size: 12px; letter-spacing: 1px; }
+        #fullHelpPanel .row { display: flex; justify-content: space-between; padding: 2px 0; border-bottom: 1px dashed rgba(255,255,255,0.04); }
+        #fullHelpPanel .row .desc { color: #999; }
+        #fullHelpPanel .row .val { color: #ddd; font-weight: bold; }
+        #fullHelpPanel .cols { display: flex; gap: 24px; }
+        #fullHelpPanel .cols > div { flex: 1; }
+        #modeMenu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 400; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: 'Courier New', monospace; padding: 20px; box-sizing: border-box; overflow-y: auto; }
+        #modeMenu h1 { color: #ffaa00; font-size: 42px; margin: 0 0 8px 0; text-shadow: 0 0 30px rgba(255,170,0,0.8), 0 0 60px rgba(255,170,0,0.4); letter-spacing: 8px; text-align: center; }
+        #modeMenu .subtitle { color: #aaa; font-size: 14px; margin-bottom: 24px; letter-spacing: 3px; text-align: center; }
+        #modeMenu .modes { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; max-width: 1400px; }
+        .modeCard { width: 280px; background: rgba(20,15,5,0.9); border: 2px solid rgba(255,170,0,0.4); border-radius: 12px; padding: 22px 24px; cursor: pointer; transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s; color: #ddd; }
+        .modeCard:hover { border-color: #ffaa00; transform: translateY(-4px); box-shadow: 0 0 30px rgba(255,170,0,0.35); }
+        .modeCard h2 { color: #ffaa00; font-size: 20px; margin: 0 0 10px 0; letter-spacing: 2px; text-shadow: 0 0 10px rgba(255,170,0,0.5); }
+        .modeCard p { font-size: 12px; color: #bbb; line-height: 1.5; margin: 6px 0; }
+        .modeCard .tag { display: inline-block; background: rgba(255,170,0,0.15); border: 1px solid rgba(255,170,0,0.5); border-radius: 4px; padding: 2px 8px; font-size: 11px; color: #ffaa00; margin-right: 6px; margin-top: 6px; }
+        .modeCard .hint { color: #888; font-size: 11px; margin-top: 12px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 10px; }
+        #allyStrategyBlock { margin-top: 24px; display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+        .strategyBtn { background: rgba(20,15,5,0.9); color: #ffaa00; border: 2px solid rgba(255,170,0,0.4); border-radius: 8px; padding: 12px 22px; cursor: pointer; font-family: 'Courier New', monospace; font-size: 14px; letter-spacing: 1px; transition: border-color 0.2s, background 0.2s; }
+        .strategyBtn:hover { border-color: #ffaa00; }
+        .strategyBtn.selected { background: rgba(255,170,0,0.2); border-color: #ffaa00; color: #ffdd00; box-shadow: 0 0 20px rgba(255,170,0,0.4); }
+        .strategyBtn .small { display: block; font-size: 10px; color: #999; margin-top: 4px; letter-spacing: 0; }
+        #customizeBtn { margin-top: 24px; background: rgba(20,15,5,0.9); color: #ffaa00; border: 2px solid rgba(255,170,0,0.5); border-radius: 8px; padding: 12px 32px; cursor: pointer; font-family: 'Courier New', monospace; font-size: 15px; letter-spacing: 2px; transition: border-color 0.2s, background 0.2s; }
+        #customizeBtn:hover { border-color: #ffaa00; background: rgba(255,170,0,0.12); }
+        #customizePanel { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 450; display: none; flex-direction: column; align-items: center; justify-content: flex-start; font-family: 'Courier New', monospace; padding: 20px; box-sizing: border-box; overflow-y: auto; }
+        #customizePanel.open { display: flex; }
+        #customizePanel h2 { color: #ffaa00; font-size: 28px; margin: 0 0 6px 0; text-shadow: 0 0 20px rgba(255,170,0,0.6); letter-spacing: 4px; }
+        #customizePanel .subtitle { color: #aaa; font-size: 12px; margin-bottom: 20px; letter-spacing: 2px; }
+        #customizePreview { width: 300px; height: 200px; background: rgba(20,15,5,0.8); border: 2px solid rgba(255,170,0,0.4); border-radius: 10px; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+        #customizePreview canvas { display: block; }
+        .customizeSection { margin-bottom: 20px; width: 100%; max-width: 700px; }
+        .customizeSection h3 { color: #ffcc44; margin: 0 0 10px 0; font-size: 14px; letter-spacing: 1px; border-bottom: 1px solid rgba(255,170,0,0.2); padding-bottom: 4px; }
+        .colorSwatches { display: flex; gap: 10px; flex-wrap: wrap; }
+        .colorSwatch { width: 40px; height: 40px; border-radius: 6px; cursor: pointer; border: 2px solid rgba(255,255,255,0.2); transition: border-color 0.2s, transform 0.15s; position: relative; }
+        .colorSwatch:hover { transform: scale(1.1); border-color: #ffaa00; }
+        .colorSwatch.selected { border-color: #ffaa00; box-shadow: 0 0 12px rgba(255,170,0,0.8); }
+        .colorSwatch.selected::after { content: '✓'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; font-size: 20px; font-weight: bold; text-shadow: 0 0 4px #000, 0 0 4px #000; }
+        .patternSwatches { display: flex; gap: 10px; flex-wrap: wrap; }
+        .patternSwatch { width: 60px; height: 40px; border-radius: 6px; cursor: pointer; border: 2px solid rgba(255,255,255,0.2); background: #333; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #ddd; letter-spacing: 0.5px; transition: border-color 0.2s, transform 0.15s; text-align: center; padding: 2px; }
+        .patternSwatch:hover { transform: scale(1.05); border-color: #ffaa00; }
+        .patternSwatch.selected { border-color: #ffaa00; box-shadow: 0 0 12px rgba(255,170,0,0.8); color: #ffaa00; }
+        #customizeCloseBtn { margin-top: 10px; background: rgba(255,170,0,0.12); color: #ffaa00; border: 2px solid rgba(255,170,0,0.6); border-radius: 8px; padding: 10px 32px; cursor: pointer; font-family: 'Courier New', monospace; font-size: 15px; letter-spacing: 2px; transition: background 0.2s; }
+        #customizeCloseBtn:hover { background: rgba(255,170,0,0.25); }
+        #winScreen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: 'Courier New', monospace; opacity: 0; pointer-events: none; transition: opacity 0.5s; }
+        #winScreen.active { opacity: 1; pointer-events: auto; }
+        #winScreen h1 { color: #ffaa00; font-size: 70px; margin: 0; text-shadow: 0 0 30px rgba(255,170,0,0.8), 0 0 60px rgba(255,170,0,0.4); letter-spacing: 10px; }
+        #winScreen p { color: #ffaa00; font-size: 22px; margin-top: 20px; text-shadow: 0 0 15px rgba(255,170,0,0.6); letter-spacing: 4px; }
+        #winScreen .sub { color: #aaa; font-size: 16px; margin-top: 40px; letter-spacing: 2px; }
+        #winScreen .menuBtn { margin-top: 30px; padding: 12px 32px; background: rgba(255,170,0,0.12); color: #ffaa00; border: 2px solid rgba(255,170,0,0.6); border-radius: 8px; cursor: pointer; font-family: 'Courier New', monospace; font-size: 16px; letter-spacing: 3px; transition: background 0.2s; }
+        #winScreen .menuBtn:hover { background: rgba(255,170,0,0.25); }
+        #healthBar { position: absolute; top: 15px; right: 15px; width: 280px; background: rgba(0,0,0,0.85); border-radius: 8px; padding: 12px 18px; border: 1px solid rgba(255,170,0,0.5); z-index: 100; pointer-events: none; }
+        #healthBar .label { color: #ffaa00; font-size: 12px; margin-bottom: 6px; text-shadow: 0 0 6px rgba(255,170,0,0.5); }
+        #healthBar .bar-bg { width: 100%; height: 12px; background: #331100; border-radius: 6px; overflow: hidden; border: 1px solid #553300; }
+        #healthBar .bar-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #ff4400, #ffaa00); border-radius: 6px; transition: width 0.3s; box-shadow: 0 0 10px rgba(255,170,0,0.8); }
+        #healthBar .pointsRow { margin-top: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+        #healthBar .pointsRow .stars { color: #ffdd00; font-size: 13px; text-shadow: 0 0 10px rgba(255,220,0,0.8); letter-spacing: 1px; }
+        #healthBar .pointsRow .pts { color: #ffdd00; font-weight: bold; font-size: 15px; text-shadow: 0 0 10px rgba(255,220,0,0.9); }
+        #healthBar .hint { margin-top: 4px; color: #888; font-size: 10px; text-align: right; }
+        #healthBar .rocketsRow { margin-top: 6px; display: flex; align-items: center; gap: 6px; font-size: 12px; }
+        #healthBar .rocketsRow .rocket { width: 16px; height: 16px; border-radius: 3px; background: #331a00; border: 1px solid #664400; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #666; }
+        #healthBar .rocketsRow .rocket.loaded { background: #662200; border-color: #ff8800; color: #ffcc00; box-shadow: 0 0 6px rgba(255,140,0,0.6); }
+        #healthBar .rocketsRow .labelR { color: #ff8800; font-size: 11px; text-shadow: 0 0 6px rgba(255,120,0,0.5); }
+        #healthBar .unlockHint { margin-top: 6px; color: #ffaa00; font-size: 10px; text-align: right; letter-spacing: 0.5px; }
+        #reloadIndicator { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff4400; font-size: 28px; font-weight: bold; text-shadow: 0 0 20px rgba(255,68,0,0.9); z-index: 60; pointer-events: none; opacity: 0; transition: opacity 0.2s; letter-spacing: 4px; }
+        #reloadIndicator.active { opacity: 1; }
+        #altitudeWarning { position: absolute; top: 30%; left: 50%; transform: translateX(-50%); color: #ff3300; font-size: 36px; font-weight: bold; text-shadow: 0 0 25px rgba(255,50,0,0.9); z-index: 70; pointer-events: none; display: none; letter-spacing: 6px; text-align: center; }
+        #altitudeWarning.active { display: block; animation: pulseWarn 0.5s infinite alternate; }
+        @keyframes pulseWarn { 0% { opacity: 1; } 100% { opacity: 0.5; } }
+        #flightHud { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); color: #ffaa00; background: rgba(0,0,0,0.8); padding: 8px 20px; border-radius: 6px; border: 1px solid rgba(255,170,0,0.5); font-family: 'Courier New', monospace; font-size: 13px; z-index: 100; pointer-events: none; display: none; text-shadow: 0 0 6px rgba(255,170,0,0.6); letter-spacing: 1px; }
+        #flightHud.active { display: block; }
+        #bombHint { position: absolute; bottom: 90px; left: 50%; transform: translateX(-50%); color: #ff5500; background: rgba(0,0,0,0.85); padding: 6px 18px; border-radius: 6px; border: 1px solid rgba(255,85,0,0.7); font-family: 'Courier New', monospace; font-size: 12px; z-index: 100; pointer-events: none; display: none; text-shadow: 0 0 8px rgba(255,85,0,0.8); letter-spacing: 1px; }
+        #bombHint.active { display: block; }
+        @media (max-width: 900px) {
+            #hud { font-size: 11px; gap: 6px; }
+            #winScreen h1 { font-size: 40px; }
+            #healthBar { width: 210px; }
+            #helpToggle { font-size: 11px; padding: 8px 14px; }
+            #helpPanel { padding: 14px 16px; font-size: 12px; }
+            #fullHelpPanel .cols { flex-direction: column; gap: 8px; }
+            #modeMenu h1 { font-size: 26px; }
+            .modeCard { width: 240px; padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="modeMenu">
+        <h1>ТАНКОВАЯ СТРЕЛЯЛКА</h1>
+        <div class="subtitle">ВЫБЕРИТЕ РЕЖИМ ИГРЫ</div>
+        <div class="modes">
+            <div class="modeCard" data-mode="solo">
+                <h2>🎯 ОДИНОЧНЫЙ</h2>
+                <p>Стандартная карта 2000 × 2000.</p>
+                <p>15 врагов (включая Тигров). Скорость врагов снижена.</p>
+                <p>Классическое выживание один на один с армией.</p>
+                <span class="tag">1 игрок</span>
+                <span class="tag">15 врагов</span>
+                <span class="tag">стандартная карта</span>
+                <div class="hint">Нажмите, чтобы начать</div>
+            </div>
+            <div class="modeCard" data-mode="allies">
+                <h2>🤝 С СОЮЗНИКАМИ</h2>
+                <p>Карта вчетверо больше — 4000 × 4000, с высокими горами.</p>
+                <p>30 врагов, 5 союзников (2 Sherman + 3 тяжёлых).</p>
+                <p>Скорость Sherman = скорости игрока с бронёй 2.</p>
+                <span class="tag">1 игрок</span>
+                <span class="tag">5 союзников</span>
+                <span class="tag">30 врагов</span>
+                <span class="tag">высокие горы</span>
+                <div class="hint">Нажмите, чтобы выбрать стиль союзников</div>
+            </div>
+            <div class="modeCard" data-mode="defense">
+                <h2>🛡 ОБОРОНА</h2>
+                <p>Широкий кратер с горизонтальной площадкой.</p>
+                <p>30 врагов: 15 обычных, 8 Sherman, 7 Тигров.</p>
+                <p>3 союзника Sherman помогают удерживать позицию.</p>
+                <span class="tag">1 игрок</span>
+                <span class="tag">3 союзника</span>
+                <span class="tag">30 врагов</span>
+                <span class="tag">кратер-крепость</span>
+                <div class="hint">Нажмите, чтобы начать оборону</div>
+            </div>
+            <div class="modeCard" data-mode="desant">
+                <h2>🪂 ДЕСАНТ</h2>
+                <p>Старт на высоте 67 м. Управление: W/S — газ, ←/→ — наклон.</p>
+                <p>Город из 67 зданий, 20 Тигров, 4 сектора.</p>
+                <p>Союзники Sherman с 20 HP. При посадке угол > 45° — гибель.</p>
+                <p><b>ПКМ в полёте — бомбовый прицел! ЛКМ — залп ракет.</b></p>
+                <span class="tag">1 игрок</span>
+                <span class="tag">2 союзника (20 HP)</span>
+                <span class="tag">20 тигров</span>
+                <span class="tag">4 сектора</span>
+                <div class="hint">Нажмите, чтобы начать десант</div>
+            </div>
+        </div>
+        <div id="allyStrategyBlock" style="display:none;">
+            <div style="width:100%; text-align:center; color:#aaa; font-size:13px; letter-spacing:2px; margin-bottom:12px;">СТИЛЬ СОЮЗНИКОВ:</div>
+            <button class="strategyBtn selected" data-strategy="smart">🧠 СТРАТЕГИЯ<span class="small">держат дистанцию, охватывают, помогают</span></button>
+            <button class="strategyBtn" data-strategy="simple">⚔ БЕЗ СТРАТЕГИИ<span class="small">просто атакуют ближайшего врага</span></button>
+            <div style="width:100%; text-align:center; margin-top:16px;">
+                <button class="strategyBtn" id="startAlliesBtn" style="padding:14px 40px; font-size:16px; letter-spacing:2px;">▶ НАЧАТЬ ИГРУ</button>
+            </div>
+        </div>
+        <button id="customizeBtn">🎨 КАСТОМИЗАЦИЯ ТАНКА</button>
+    </div>
+
+    <div id="customizePanel">
+        <h2>КАСТОМИЗАЦИЯ ТАНКА</h2>
+        <div class="subtitle">ИЗМЕНЕНИЯ ПРИМЕНЯЮТСЯ СРАЗУ</div>
+        <div id="customizePreview"><canvas id="previewCanvas" width="280" height="180"></canvas></div>
+        <div class="customizeSection"><h3>ЦВЕТ КОРПУСА</h3><div class="colorSwatches" id="bodyColors"></div></div>
+        <div class="customizeSection"><h3>ЦВЕТ БАШНИ</h3><div class="colorSwatches" id="turretColors"></div></div>
+        <div class="customizeSection"><h3>ЦВЕТ СТВОЛА</h3><div class="colorSwatches" id="barrelColors"></div></div>
+        <div class="customizeSection"><h3>РИСУНОК НА КОРПУСЕ</h3><div class="patternSwatches" id="patterns"></div></div>
+        <button id="customizeCloseBtn">ГОТОВО</button>
+    </div>
+
+    <div id="info">🔫 ТАНКОВАЯ СТРЕЛЯЛКА | v4.8</div>
+
+    <button id="helpToggle">📖 ИНСТРУКЦИЯ ▲</button>
+    <div id="helpPanel">
+        <h2>ИНСТРУКЦИЯ</h2>
+        <h3>УПРАВЛЕНИЕ (ЗЕМЛЯ)</h3>
+        <div class="row"><span class="desc">Движение вперёд / назад</span><span class="val"><kbd>W</kbd> / <kbd>S</kbd></span></div>
+        <div class="row"><span class="desc">Поворот корпуса</span><span class="val"><kbd>A</kbd> / <kbd>D</kbd> или <kbd>←</kbd> / <kbd>→</kbd></span></div>
+        <div class="row"><span class="desc">Выстрел снарядом</span><span class="val"><kbd>ЛКМ</kbd></span></div>
+        <div class="row"><span class="desc">Прицеливание (зум)</span><span class="val"><kbd>ПКМ</kbd> (зажать)</span></div>
+        <div class="row"><span class="desc">Пуск ракеты</span><span class="val"><kbd>F</kbd></span></div>
+        <div class="row"><span class="desc">Купить/разблокировать ракеты</span><span class="val"><kbd>Q</kbd> (8 очков)</span></div>
+        <div class="row"><span class="desc">Улучшить броню (2 очка)</span><span class="val"><kbd>E</kbd></span></div>
+        <div class="row"><span class="desc">Выход в меню режимов</span><span class="val"><kbd>R</kbd></span></div>
+        <h3>УПРАВЛЕНИЕ (ПОЛЁТ, РЕЖИМ ДЕСАНТ)</h3>
+        <div class="row"><span class="desc">Газ (вперёд / торможение)</span><span class="val"><kbd>W</kbd> / <kbd>S</kbd></span></div>
+        <div class="row"><span class="desc">Наклон влево / вправо</span><span class="val"><kbd>←</kbd> / <kbd>→</kbd> или <kbd>A</kbd> / <kbd>D</kbd></span></div>
+        <div class="row"><span class="desc">Снижение (вниз)</span><span class="val"><kbd>↓</kbd></span></div>
+        <div class="row"><span class="desc">Набор высоты (вверх)</span><span class="val"><kbd>↑</kbd></span></div>
+        <div class="row"><span class="desc">Пуск ракеты (вперёд)</span><span class="val"><kbd>F</kbd></span></div>
+        <div class="row"><span class="desc">Бомбовый прицел</span><span class="val"><kbd>ПКМ</kbd> (зажать)</span></div>
+        <div class="row"><span class="desc">Залп ракет в точку</span><span class="val"><kbd>ЛКМ</kbd> при зажатом <kbd>ПКМ</kbd></span></div>
+        <h3>РЕЖИМ ДЕСАНТ</h3>
+        <div class="row"><span class="desc">Старт</span><span class="val">высота 67 м (игрок + 2 союзника)</span></div>
+        <div class="row"><span class="desc">Посадка</span><span class="val">угол &gt; 45° = гибель</span></div>
+        <div class="row"><span class="desc">Союзники Sherman</span><span class="val">20 HP каждый</span></div>
+        <div class="row"><span class="desc">Тигры в городе</span><span class="val">не атакуют, пока игрок вне города</span></div>
+        <div class="row"><span class="desc">Секторы города</span><span class="val">4 (NW, NE, SW, SE)</span></div>
+        <div class="row"><span class="desc">Залп бомбовых ракет</span><span class="val">все ракеты по очереди, интервал 0.12 с</span></div>
+        <h3>РЕЖИМ ОБОРОНА</h3>
+        <div class="row"><span class="desc">Врагов</span><span class="val">30 (15 обычных, 8 Sherman, 7 Тигров)</span></div>
+        <div class="row"><span class="desc">Союзники</span><span class="val">3 Sherman</span></div>
+        <h3>ТИПЫ ТАНКОВ</h3>
+        <div class="row"><span class="desc">Обычный</span><span class="val">1 попадание</span></div>
+        <div class="row"><span class="desc">Тигр</span><span class="val">2 попадания, медленнее, чаще стреляет</span></div>
+        <div class="row"><span class="desc">Sherman</span><span class="val">броня 2</span></div>
+        <div class="row"><span class="desc">Тяжёлый</span><span class="val">броня 3 (220 HP)</span></div>
+        <div class="note">Уничтожь все танки противника. R — выход в меню.</div>
+        <button class="closeBtn" id="helpClose">ЗАКРЫТЬ</button>
+    </div>
+
+    <div id="healthBar">
+        <div class="label">❤️ БРОНЯ</div>
+        <div class="bar-bg"><div class="bar-fill" id="healthFill" style="width:100%"></div></div>
+        <div class="pointsRow">
+            <span class="stars">⭐ ОЧКИ: <span class="pts" id="upgradePoints">0</span></span>
+            <span class="pts" id="armorLevelDisplay" style="font-size:12px;">УР. 0</span>
+        </div>
+        <div class="rocketsRow" id="rocketsRow">
+            <span class="labelR">🚀 РАКЕТЫ:</span>
+            <span id="rocketsContainer" style="display:flex;gap:4px;"></span>
+        </div>
+        <div class="unlockHint" id="unlockHint">[Q] — разблокировать ракеты (8 очков)</div>
+        <div class="hint">[E] — броня · [F] — ракета · [ПКМ] — прицел</div>
+    </div>
+
+    <div id="crosshair"><div class="dot"></div></div>
+    <div id="reloadIndicator">ПЕРЕЗАРЯДКА</div>
+    <div id="altitudeWarning">⚠ СЛИШКОМ КРУТО ⚠<br><span style="font-size:18px;">УГОЛ &gt; 45° — ГИБЕЛЬ</span></div>
+
+    <div id="flightHud">✈ ПОЛЁТ · W/S — тяга · ←/→ — наклон · ↑/↓ — высота · ПКМ — бомбовый прицел</div>
+    <div id="bombHint">🎯 БОМБОВЫЙ ПРИЦЕЛ · ЛКМ — залп ракет в точку</div>
+
+    <div id="hud">
+        <div class="hud-item">💥 <span id="kills">0</span> / <span id="totalTanks">0</span></div>
+        <div class="hud-item" id="alliesHud" style="display:none;">🤝 <span id="alliesLeft">0</span></div>
+        <div class="hud-item">🛢 <span id="barrelsLeft">0</span></div>
+        <div class="hud-item">🏢 <span id="buildingsLeft">0</span></div>
+        <div class="hud-item">🎯 <span id="accuracy">100</span>%</div>
+        <div class="hud-item">FPS <span id="fps">60</span></div>
+    </div>
+
+    <button id="fullHelpToggle">📋 ВСЕ ПАРАМЕТРЫ ▲</button>
+    <div id="fullHelpPanel">
+        <div class="cols">
+            <div>
+                <h4>БРОНЯ И ПРОКАЧКА</h4>
+                <div class="row"><span class="desc">Базовая броня</span><span class="val">100</span></div>
+                <div class="row"><span class="desc">+ за уровень</span><span class="val">+40 к максимуму</span></div>
+                <div class="row"><span class="desc">Стоимость уровня</span><span class="val">2 очка</span></div>
+                <div class="row"><span class="desc">Макс. уровней</span><span class="val">5</span></div>
+                <h4>РАКЕТЫ</h4>
+                <div class="row"><span class="desc">Разблокировка / докупка</span><span class="val">8 очков (Q)</span></div>
+                <div class="row"><span class="desc">За покупку</span><span class="val">+2 ракеты</span></div>
+                <div class="row"><span class="desc">Максимум</span><span class="val">6 ракет</span></div>
+            </div>
+            <div>
+                <h4>ДЕСАНТ</h4>
+                <div class="row"><span class="desc">Союзники Sherman</span><span class="val">20 HP</span></div>
+                <div class="row"><span class="desc">Высота старта</span><span class="val">67 м</span></div>
+                <div class="row"><span class="desc">Секторы</span><span class="val">4</span></div>
+                <div class="row"><span class="desc">Залп бомбовых ракет</span><span class="val">ПКМ + ЛКМ, интервал 0.12 с</span></div>
+                <h4>ОБОРОНА</h4>
+                <div class="row"><span class="desc">Врагов</span><span class="val">30 (15+8+7)</span></div>
+                <div class="row"><span class="desc">Союзники</span><span class="val">3 Sherman</span></div>
+                <h4>ОПТИМИЗАЦИЯ</h4>
+                <div class="row"><span class="desc">Тени</span><span class="val">отключены</span></div>
+                <div class="row"><span class="desc">Трава</span><span class="val">6000</span></div>
+                <div class="row"><span class="desc">Деревья</span><span class="val">15</span></div>
+                <div class="row"><span class="desc">Pixel ratio</span><span class="val">1.0</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="winScreen">
+        <h1>ПОБЕДА</h1>
+        <p>ВСЕ ТАНКИ УНИЧТОЖЕНЫ</p>
+        <div class="sub">ВЫ МОЖЕТЕ ВЕРНУТЬСЯ В МЕНЮ</div>
+        <button class="menuBtn" id="backToMenuBtn">В МЕНЮ (R)</button>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        const modeMenuEl = document.getElementById('modeMenu');
+        const allyStrategyBlockEl = document.getElementById('allyStrategyBlock');
+        const customizePanelEl = document.getElementById('customizePanel');
+        const customizeBtn = document.getElementById('customizeBtn');
+        const customizeCloseBtn = document.getElementById('customizeCloseBtn');
+        const startAlliesBtn = document.getElementById('startAlliesBtn');
+        const backToMenuBtn = document.getElementById('backToMenuBtn');
+        const altitudeWarningEl = document.getElementById('altitudeWarning');
+        const flightHudEl = document.getElementById('flightHud');
+        const bombHintEl = document.getElementById('bombHint');
+
+        let GAME_MODE = 'solo';
+        let ALLY_STRATEGY = 'smart';
+        const ENEMY_SPEED_MULT = 0.5;
+        const REVENGE_RADIUS = 80;
+        const REVENGE_COUNT = 3;
+
+        let MAP_SIZE = 2000, MAP_LIMIT = 280;
+        let CRATER_RADIUS = 24, HILL_RADIUS = 60, HILL_HEIGHT = 6, CRATER_DEPTH = 12;
+        let FLAT_PLATEAU_RADIUS = 0;
+        const GROUND_SEGMENTS = 100;
+
+        let ENEMY_COUNT = 15, ALLY_COUNT = 0, BARREL_COUNT = 8, TREE_COUNT = 15;
+        let GRASS_COUNT = 6000, GRASS_RADIUS = 300;
+        let ENEMY_MIX = { normal: 1, tiger: 0.25, sherman: 0 };
+
+        const DESANT_START_HEIGHT = 67;
+        const DESANT_FLIGHT_SPEED = 18;
+        const DESANT_MAX_LANDING_ANGLE = 45 * Math.PI / 180;
+        const CITY_RADIUS = 90;
+        let DESANT_CITY_BUILDINGS = 67;
+
+        const SHERMAN_HP_DESANT = 20;
+        const SHERMAN_HP_NORMAL = 100 + 2 * 40;
+
+        const customization = { bodyColor: 0xcc2222, turretColor: 0xdd3333, barrelColor: 0x333333, pattern: 'none' };
+        const BODY_COLORS = [
+            { name: 'Красный', color: 0xcc2222 }, { name: 'Тёмно-зелёный', color: 0x3a6a3a },
+            { name: 'Синий', color: 0x2266cc }, { name: 'Жёлтый', color: 0xddaa22 },
+            { name: 'Фиолетовый', color: 0x8833aa }, { name: 'Чёрный', color: 0x333333 },
+            { name: 'Песочный', color: 0xccaa66 }, { name: 'Оранжевый', color: 0xdd6622 },
+            { name: 'Голубой', color: 0x44aacc }, { name: 'Белый', color: 0xdddddd }
+        ];
+        const TURRET_COLORS = BODY_COLORS;
+        const BARREL_COLORS = [
+            { name: 'Тёмный', color: 0x333333 }, { name: 'Серый', color: 0x666666 },
+            { name: 'Чёрный', color: 0x111111 }, { name: 'Золотой', color: 0xccaa33 }
+        ];
+        const PATTERNS = [
+            { name: 'Нет', value: 'none' }, { name: 'Полосы', value: 'stripes' },
+            { name: 'Крест', value: 'cross' }, { name: 'Шеврон', value: 'chevron' },
+            { name: 'Звёзды', value: 'stars' }
+        ];
+
+        let isFlying = false;
+        let playerPitch = 0;
+        let playerRoll = 0;
+        let flightSpeed = DESANT_FLIGHT_SPEED;
+        let desantMode = false;
+
+        // ==== Ракетно-бомбовый прицел ====
+        let isBombAiming = false;
+        let bombAimMarker = null;
+        const bombAimPoint = new THREE.Vector3(0, 0, 0);
+        const BOMB_AIM_DISTANCE = 45;
+
+        // ==== Очередь бомбовых ракет (залп) ====
+        let bombSalvoQueue = [];
+        const BOMB_SALVO_INTERVAL = 0.12;
+
+        const _v1 = new THREE.Vector3();
+        const _v2 = new THREE.Vector3();
+        const _v3 = new THREE.Vector3();
+
+        function getTerrainHeight(x, z) {
+            const scale = MAP_SIZE / 2000;
+            if (GAME_MODE === 'defense') {
+                const dc = Math.sqrt(x*x + z*z);
+                const CR = CRATER_RADIUS * scale;
+                const FLAT = FLAT_PLATEAU_RADIUS * scale;
+                let h = 0;
+                h += Math.sin(x * 0.02 / scale) * Math.cos(z * 0.018 / scale) * 2.0;
+                if (dc < CR) {
+                    if (dc < FLAT) { h = -CRATER_DEPTH; }
+                    else {
+                        const t = (dc - FLAT) / (CR - FLAT);
+                        h = -CRATER_DEPTH + Math.sin(t * Math.PI * 0.5) * CRATER_DEPTH;
+                    }
+                }
+                return h;
+            }
+            if (GAME_MODE === 'desant') return 0;
+            if (GAME_MODE === 'allies') {
+                let h = 0;
+                h += Math.sin(x * 0.008 / scale) * Math.cos(z * 0.007 / scale) * 18.0;
+                h += Math.sin((x + z) * 0.006 / scale + 1.3) * Math.cos((x - z) * 0.009 / scale - 0.7) * 12.0;
+                h += Math.sin(x * 0.018 / scale + 2.1) * Math.cos(z * 0.015 / scale + 0.5) * 7.0;
+                h += Math.sin(x * 0.04 / scale - 1.2) * Math.cos(z * 0.035 / scale + 2.7) * 3.0;
+                h += Math.sin(x * 0.15 / scale + 0.5) * Math.cos(z * 0.13 / scale - 0.3) * 0.5;
+                h -= Math.pow(Math.abs(Math.sin(x * 0.012 / scale + 0.8)), 3) * 5.0;
+                h -= Math.pow(Math.abs(Math.cos(z * 0.010 / scale - 0.4)), 3) * 5.0;
+                const dc = Math.sqrt(x*x + z*z);
+                const CR = CRATER_RADIUS * scale, HR = HILL_RADIUS * scale;
+                if (dc < HR + 20 * scale) {
+                    const tH = Math.max(0, 1 - dc / HR);
+                    const hh = Math.sin(tH * Math.PI * 0.5) * HILL_HEIGHT * 2.5;
+                    let cr = 0;
+                    if (dc < CR) { const tc = dc / CR; cr = (1 - tc * tc) * CRATER_DEPTH; }
+                    const blend = Math.min(1, Math.max(0, (HR + 20 * scale - dc) / (20 * scale)));
+                    h = h * (1 - blend) + (hh - cr) * blend;
+                }
+                return h;
+            } else {
+                let h = 0;
+                h += Math.sin(x * 0.012 / scale) * Math.cos(z * 0.010 / scale) * 8.0;
+                h += Math.sin(x * 0.021 / scale + 1.7) * Math.cos(z * 0.018 / scale - 0.9) * 4.0;
+                h += Math.sin(x * 0.05 / scale + 2.3) * Math.cos(z * 0.045 / scale + 1.1) * 1.5;
+                h += Math.sin(x * 0.08 / scale - 1.2) * Math.cos(z * 0.09 / scale + 2.7) * 0.8;
+                h += Math.sin(x * 0.2 / scale + 0.5) * Math.cos(z * 0.18 / scale - 0.3) * 0.3;
+                const dc = Math.sqrt(x*x + z*z);
+                const CR = CRATER_RADIUS * scale, HR = HILL_RADIUS * scale;
+                if (dc < HR + 20 * scale) {
+                    const tH = Math.max(0, 1 - dc / HR);
+                    const hh = Math.sin(tH * Math.PI * 0.5) * HILL_HEIGHT;
+                    let cr = 0;
+                    if (dc < CR) { const tc = dc / CR; cr = (1 - tc * tc) * CRATER_DEPTH; }
+                    const blend = Math.min(1, Math.max(0, (HR + 20 * scale - dc) / (20 * scale)));
+                    h = h * (1 - blend) + (hh - cr) * blend;
+                }
+                return h;
+            }
+        }
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB);
+        scene.fog = new THREE.Fog(0x87CEEB, 200, 600);
+        const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 1500);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        renderer.setSize(innerWidth, innerHeight);
+        renderer.setPixelRatio(1);
+        renderer.shadowMap.enabled = false;
+        document.body.appendChild(renderer.domElement);
+
+        const hemi = new THREE.HemisphereLight(0xffffff, 0x444455, 0.9);
+        scene.add(hemi);
+        const sun = new THREE.DirectionalLight(0xfff4e0, 1.2);
+        sun.position.set(100, 150, 80);
+        scene.add(sun);
+
+        let ground = null, grassMesh = null, treeGroup = null;
+        let buildings = [], buildingClusters = [], ruins = [], persistentDebris = [], barrels = [], tanks = [], allyTanks = [];
+
+        const BUILDING_HP = 3;
+        const BARREL_RADIUS = 1.2, BARREL_HEIGHT = 2.2, BARREL_DAMAGE = 40, BARREL_DAMAGE_RADIUS = 11;
+        const PROXIMITY_RADIUS = 40, PROXIMITY_LEAVE_RADIUS = 50;
+        const DEBRIS_GRAVITY = 18, FLYING_DEBRIS_COUNT = 8, SETTLED_DEBRIS_COUNT = 10;
+
+        const SHARED_SPHERE_GEO = new THREE.SphereGeometry(1, 4, 4);
+        const SHARED_BOX_GEO = new THREE.BoxGeometry(1, 1, 1);
+        const FIRE_MAT_ORANGE = new THREE.MeshBasicMaterial({ color: 0xff6600, transparent: true });
+        const FIRE_MAT_YELLOW = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true });
+        const SMOKE_MAT = new THREE.MeshBasicMaterial({ color: 0x333333, transparent: true });
+
+        const playerTank = {
+            position: new THREE.Vector3(0, 0, 0), rotation: 0, velocity: new THREE.Vector3(0, 0, 0),
+            health: 100, maxHealth: 100, baseHealth: 100,
+            reloadTime: 0, reloadMax: 1.2, destroyed: false,
+            armorLevel: 0, upgradePoints: 0,
+            rocketsUnlocked: false, rocketsCount: 0,
+            rocketReloadTime: 0, rocketReloadMax: 0.8
+        };
+
+        const playerGroup = new THREE.Group();
+        const pMaterials = {};
+        const pParts = {};
+        const rocketVisuals = [];
+
+        let playerWings = null;
+        let underWingRockets = [];
+
+        const TRACK_MAT = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+        const WHEEL_MAT = new THREE.MeshLambertMaterial({ color: 0x2a2a2a });
+        const BARREL_MAT = new THREE.MeshLambertMaterial({ color: 0x2a2a2a });
+
+        function buildWings(parentGroup, color = 0xccaa33) {
+            const wingMat = new THREE.MeshLambertMaterial({ color });
+            const wingGroup = new THREE.Group();
+            const wingL = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.15, 1.4), wingMat);
+            wingL.position.set(-2.2, 1.5, 0); wingGroup.add(wingL);
+            const wingR = wingL.clone(); wingR.position.x = 2.2; wingGroup.add(wingR);
+            const strutGeo = new THREE.CylinderGeometry(0.06, 0.06, 2.0, 4);
+            const strutMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+            const strutL = new THREE.Mesh(strutGeo, strutMat); strutL.position.set(-0.8, 1.0, 0); strutL.rotation.z = 0.5; wingGroup.add(strutL);
+            const strutR = strutL.clone(); strutR.position.x = 0.8; strutR.rotation.z = -0.5; wingGroup.add(strutR);
+
+            // Ракеты под крыльями (игрок и союзники)
+            const rocketBodyMat = new THREE.MeshLambertMaterial({ color: 0xdddddd });
+            const rocketNoseMat = new THREE.MeshLambertMaterial({ color: 0xcc2222 });
+            const rocketGeoBody = new THREE.CylinderGeometry(0.15, 0.15, 1.6, 6);
+            const rocketGeoNose = new THREE.ConeGeometry(0.15, 0.5, 6);
+            for (const side of [-1, 1]) {
+                for (let i = 0; i < 2; i++) {
+                    const rg = new THREE.Group();
+                    const rb = new THREE.Mesh(rocketGeoBody, rocketBodyMat); rg.add(rb);
+                    const rn = new THREE.Mesh(rocketGeoNose, rocketNoseMat); rn.position.y = 1.05; rg.add(rn);
+                    rg.position.set(side * (1.8 + i * 0.5), 1.2, 0.2);
+                    rg.rotation.x = Math.PI / 2;
+                    wingGroup.add(rg);
+                }
+            }
+
+            parentGroup.add(wingGroup);
+            return wingGroup;
+        }
+
+        function buildPlayerWings() {
+            if (playerWings) return;
+            playerWings = buildWings(playerGroup, 0xccaa33);
+            underWingRockets = [];
+        }
+
+        function removePlayerWings() {
+            if (playerWings) {
+                playerGroup.remove(playerWings);
+                playerWings = null;
+                underWingRockets = [];
+            }
+        }
+
+        function createBombAimMarker() {
+            const g = new THREE.Group();
+            const ringGeo = new THREE.RingGeometry(2.5, 3.0, 24);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0xff3300, side: THREE.DoubleSide, transparent: true, opacity: 0.9, depthTest: false });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = -Math.PI / 2;
+            g.add(ring);
+            const crossMat = new THREE.MeshBasicMaterial({ color: 0xff3300, transparent: true, opacity: 0.9, depthTest: false });
+            const c1 = new THREE.Mesh(new THREE.PlaneGeometry(6, 0.2), crossMat);
+            c1.rotation.x = -Math.PI / 2; g.add(c1);
+            const c2 = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 6), crossMat);
+            c2.rotation.x = -Math.PI / 2; g.add(c2);
+            g.visible = false;
+            g.renderOrder = 999;
+            scene.add(g);
+            return g;
+        }
+        bombAimMarker = createBombAimMarker();
+
+        function buildPlayerTank() {
+            while (playerGroup.children.length > 0) playerGroup.remove(playerGroup.children[0]);
+            const bodyMat = new THREE.MeshLambertMaterial({ color: customization.bodyColor });
+            const turretMat = new THREE.MeshLambertMaterial({ color: customization.turretColor });
+            const barrelMat = new THREE.MeshLambertMaterial({ color: customization.barrelColor });
+            pMaterials.body = bodyMat; pMaterials.turret = turretMat; pMaterials.barrel = barrelMat;
+            const body = new THREE.Mesh(new THREE.BoxGeometry(3.6, 1.4, 5.6), bodyMat);
+            body.position.y = 1.1;
+            playerGroup.add(body); pParts.body = body;
+            const upper = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.8, 4.8), bodyMat);
+            upper.position.y = 2.0; playerGroup.add(upper);
+            const turret = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.4, 1.1, 6), turretMat);
+            turret.position.set(0, 2.9, 0.9); playerGroup.add(turret); pParts.turret = turret;
+            const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 5.0, 6), barrelMat);
+            barrel.rotation.x = Math.PI / 2; barrel.position.set(0, 3.1, 3.0);
+            playerGroup.add(barrel); pParts.barrel = barrel;
+            const muzzle = new THREE.Object3D(); muzzle.position.set(0, 3.1, 5.5); playerGroup.add(muzzle); pParts.muzzle = muzzle;
+            const patternMat = new THREE.MeshBasicMaterial({ color: 0x111111, side: THREE.DoubleSide });
+            if (customization.pattern === 'stripes') {
+                for (let i = 0; i < 3; i++) {
+                    const s = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 4.6), patternMat);
+                    s.position.set(-1.0 + i * 1.0, 2.0, 2.81); playerGroup.add(s);
+                }
+            } else if (customization.pattern === 'cross') {
+                const h = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.4), patternMat);
+                h.position.set(0, 2.0, 2.81); playerGroup.add(h);
+                const v = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 4.6), patternMat);
+                v.position.set(0, 2.0, 2.81); playerGroup.add(v);
+            } else if (customization.pattern === 'chevron') {
+                const ch = new THREE.PlaneGeometry(2.0, 0.4);
+                const c1 = new THREE.Mesh(ch, patternMat); c1.position.set(0, 2.5, 2.81); c1.rotation.z = -0.3; playerGroup.add(c1);
+                const c2 = new THREE.Mesh(ch, patternMat); c2.position.set(0, 2.5, 2.81); c2.rotation.z = 0.3; playerGroup.add(c2);
+            } else if (customization.pattern === 'stars') {
+                for (let i = 0; i < 3; i++) {
+                    const st = new THREE.Mesh(new THREE.CircleGeometry(0.35, 4), patternMat);
+                    st.position.set(-1.0 + i * 1.0, 2.0, 2.81); playerGroup.add(st);
+                }
+            }
+            const trackGeo = new THREE.BoxGeometry(0.8, 1.1, 5.8);
+            const tL = new THREE.Mesh(trackGeo, TRACK_MAT); tL.position.set(-1.7, 0.55, 0); playerGroup.add(tL);
+            const tR = new THREE.Mesh(trackGeo, TRACK_MAT); tR.position.set(1.7, 0.55, 0); playerGroup.add(tR);
+            const wheelGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.8, 6);
+            for (let i = -2; i <= 2; i++) {
+                const wl = new THREE.Mesh(wheelGeo, WHEEL_MAT); wl.rotation.z = Math.PI / 2; wl.position.set(-1.7, 0.55, i * 1.1); playerGroup.add(wl);
+                const wr = wl.clone(); wr.position.x = 1.7; playerGroup.add(wr);
+            }
+            rocketVisuals.length = 0;
+            const makeRV = (side) => {
+                const g = new THREE.Group();
+                const b = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 1.8, 6), new THREE.MeshLambertMaterial({ color: 0xdddddd }));
+                g.add(b);
+                const n = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.6, 6), new THREE.MeshLambertMaterial({ color: 0xcc2222 }));
+                n.position.y = 1.2; g.add(n);
+                g.position.set(side * 0.7, 3.6, 0.9); g.rotation.x = Math.PI / 2; g.visible = false;
+                playerGroup.add(g); rocketVisuals.push(g);
+            };
+            makeRV(-1); makeRV(1);
+        }
+        buildPlayerTank();
+        scene.add(playerGroup);
+        let playerMuzzle = pParts.muzzle, pBarrel = pParts.barrel, pTurret = pParts.turret;
+
+        const shells = [], rockets = [], explosions = [], flashes = [];
+        let activeFlashLights = [];
+
+        const killsEl = document.getElementById('kills');
+        const fpsEl = document.getElementById('fps');
+        const healthFillEl = document.getElementById('healthFill');
+        const reloadEl = document.getElementById('reloadIndicator');
+        const winScreenEl = document.getElementById('winScreen');
+        const accuracyEl = document.getElementById('accuracy');
+        const totalTanksEl = document.getElementById('totalTanks');
+        const barrelsLeftEl = document.getElementById('barrelsLeft');
+        const buildingsLeftEl = document.getElementById('buildingsLeft');
+        const alliesHudEl = document.getElementById('alliesHud');
+        const alliesLeftEl = document.getElementById('alliesLeft');
+        const upgradePointsEl = document.getElementById('upgradePoints');
+        const armorLevelDisplayEl = document.getElementById('armorLevelDisplay');
+        const rocketsRowEl = document.getElementById('rocketsRow');
+        const rocketsContainerEl = document.getElementById('rocketsContainer');
+        const unlockHintEl = document.getElementById('unlockHint');
+
+        const ARMOR_PER_LEVEL = 40, SPEED_PENALTY_PER_LEVEL = 0.12, MAX_ARMOR_LEVEL = 5;
+        const UPGRADE_COST = 2, ROCKET_UNLOCK_COST = 8, ROCKET_AMMO_PER_PURCHASE = 2, MAX_ROCKETS = 6;
+        let kills = 0, shotsFired = 0, shotsHit = 0;
+
+        const ALLY_BASE_SPEED = 28;
+        const SHERMAN_ARMOR = 2;
+        const HEAVY_ARMOR = 3;
+
+        function getSpeedFactorByArmor(armor) {
+            return Math.max(0.4, 1 - armor * SPEED_PENALTY_LEVEL(armor));
+        }
+        function SPEED_PENALTY_LEVEL(a) { return a * SPEED_PENALTY_PER_LEVEL; }
+
+        function disposeGroup(group) {
+            group.traverse(c => {
+                if (c.geometry && c.geometry !== SHARED_SPHERE_GEO && c.geometry !== SHARED_BOX_GEO) c.geometry.dispose();
+            });
+        }
+
+        function clearWorld() {
+            if (ground) { scene.remove(ground); ground.geometry.dispose(); ground.material.dispose(); ground = null; }
+            if (grassMesh) { scene.remove(grassMesh); grassMesh.geometry.dispose(); grassMesh.material.dispose(); grassMesh = null; }
+            if (treeGroup) { scene.remove(treeGroup); disposeGroup(treeGroup); treeGroup = null; }
+            for (const b of buildings) scene.remove(b.group); buildings = []; buildingClusters = [];
+            for (const r of ruins) { scene.remove(r); disposeGroup(r); } ruins = [];
+            for (const d of persistentDebris) { scene.remove(d); }
+            persistentDebris = [];
+            for (const b of barrels) scene.remove(b.group); barrels = [];
+            for (const t of tanks) scene.remove(t.group); tanks = [];
+            for (const a of allyTanks) scene.remove(a.group); allyTanks = [];
+            for (const s of shells) { scene.remove(s.mesh); } shells.length = 0;
+            for (const r of rockets) { scene.remove(r.mesh); } rockets.length = 0;
+            for (const e of explosions) { scene.remove(e.mesh); } explosions.length = 0;
+            for (const f of flashes) { scene.remove(f.light); } flashes.length = 0;
+            activeFlashLights = [];
+            bombSalvoQueue = [];
+            altitudeWarningEl.classList.remove('active');
+            flightHudEl.classList.remove('active');
+            bombHintEl.classList.remove('active');
+            isBombAiming = false;
+            if (bombAimMarker) bombAimMarker.visible = false;
+        }
+        const clearWorldFn = clearWorld;
+
+        function createGround() {
+            const g = new THREE.PlaneGeometry(MAP_SIZE, MAP_SIZE, GROUND_SEGMENTS, GROUND_SEGMENTS);
+            g.rotateX(-Math.PI / 2);
+            const pa = g.attributes.position;
+            for (let i = 0; i < pa.count; i++) pa.setY(i, getTerrainHeight(pa.getX(i), pa.getZ(i)));
+            g.computeVertexNormals();
+            ground = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: 0x4a7a3a }));
+            scene.add(ground);
+        }
+
+        function createGrass() {
+            const geo = new THREE.ConeGeometry(0.15, 1.2, 3); geo.translate(0, 0.6, 0);
+            grassMesh = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ color: 0x5a9a4a }), GRASS_COUNT);
+            const d = new THREE.Object3D();
+            for (let i = 0; i < GRASS_COUNT; i++) {
+                const r = Math.sqrt(Math.random()) * GRASS_RADIUS * (MAP_SIZE / 2000);
+                const th = Math.random() * Math.PI * 2;
+                const x = Math.cos(th) * r, z = Math.sin(th) * r;
+                if (Math.sqrt(x*x + z*z) < 28 * (MAP_SIZE / 2000)) continue;
+                d.position.set(x, getTerrainHeight(x, z), z); d.rotation.y = Math.random() * Math.PI;
+                const sc = 0.7 + Math.random() * 1.0; d.scale.set(sc, sc, sc);
+                d.updateMatrix(); grassMesh.setMatrixAt(i, d.matrix);
+            }
+            grassMesh.instanceMatrix.needsUpdate = true; scene.add(grassMesh);
+        }
+
+        function createTrees() {
+            treeGroup = new THREE.Group();
+            const trunkGeo = new THREE.CylinderGeometry(0.25, 0.35, 3, 4);
+            const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5a3a1a });
+            const folGeo = new THREE.SphereGeometry(1.6, 4, 4);
+            const folMat = new THREE.MeshLambertMaterial({ color: 0x2d6b2d });
+            for (let i = 0; i < TREE_COUNT; i++) {
+                const ang = (i / TREE_COUNT) * Math.PI * 2;
+                const br = 140 * (MAP_SIZE / 2000);
+                const r = br + Math.random() * 70 * (MAP_SIZE / 2000);
+                const x = Math.cos(ang) * r, z = Math.sin(ang) * r;
+                const g = new THREE.Group();
+                const tr = new THREE.Mesh(trunkGeo, trunkMat); tr.position.y = 1.5; g.add(tr);
+                const fo = new THREE.Mesh(folGeo, folMat); fo.position.y = 3.8; g.add(fo);
+                g.position.set(x, getTerrainHeight(x, z), z); treeGroup.add(g);
+            }
+            scene.add(treeGroup);
+        }
+
+        function createBarrel(x, z) {
+            const y = getTerrainHeight(x, z);
+            const g = new THREE.Group();
+            const b = new THREE.Mesh(new THREE.CylinderGeometry(BARREL_RADIUS, BARREL_RADIUS, BARREL_HEIGHT, 6), new THREE.MeshLambertMaterial({ color: 0xcc2222 }));
+            b.position.y = BARREL_HEIGHT / 2; g.add(b);
+            const cap = new THREE.Mesh(new THREE.CylinderGeometry(BARREL_RADIUS * 0.9, BARREL_RADIUS * 0.9, 0.15, 6), new THREE.MeshLambertMaterial({ color: 0xaa1111 }));
+            cap.position.y = BARREL_HEIGHT + 0.05; g.add(cap);
+            g.position.set(x, y, z); g.rotation.y = Math.random() * Math.PI * 2; scene.add(g);
+            barrels.push({ group: g, position: new THREE.Vector3(x, y, z), destroyed: false });
+        }
+
+        function createBarrels() {
+            if (GAME_MODE === 'desant') {
+                for (let i = 0; i < 8; i++) {
+                    const ang = Math.random() * Math.PI * 2;
+                    const r = 20 + Math.random() * 80;
+                    const x = Math.cos(ang) * r, z = Math.sin(ang) * r;
+                    createBarrel(x, z);
+                }
+                return;
+            }
+            const sc = MAP_SIZE / 2000;
+            const cand = [[20,-30],[25,-32],[22,-35],[-45,60],[-48,63],[60,80],[-70,-80],[-73,-82],[-68,-85],[-75,-79],[90,-20],[93,-23],[-100,40],[40,-100],[-30,-120],[-33,-123],[130,60],[133,63],[136,60],[-140,-30],[10,100],[-10,-100],[80,-90],[83,-93]];
+            const scaled = cand.map(([x,z]) => [x*sc, z*sc]);
+            const sh = scaled.slice().sort(() => Math.random() - 0.5);
+            sh.slice(0, Math.min(BARREL_COUNT, sh.length)).forEach(([x,z]) => createBarrel(x, z));
+        }
+
+        function makeBoxBuilding(x, z, w, h, d, wallColor, roofColor) {
+            const gy = getTerrainHeight(x, z);
+            const g = new THREE.Group();
+            const block = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: wallColor }));
+            block.position.y = h / 2; g.add(block);
+            const roof = new THREE.Mesh(new THREE.BoxGeometry(w + 0.4, 0.5, d + 0.4), new THREE.MeshLambertMaterial({ color: roofColor }));
+            roof.position.y = h + 0.25; g.add(roof);
+            g.position.set(x, gy, z); scene.add(g);
+            buildings.push({ group: g, position: new THREE.Vector3(x, gy, z), width: w, height: h, depth: d, halfW: w/2, halfD: d/2, health: BUILDING_HP, maxHealth: BUILDING_HP, destroyed: false, color: wallColor });
+        }
+
+        function createWarehouse(x, z, w, h, d) {
+            const gy = getTerrainHeight(x, z);
+            const g = new THREE.Group();
+            const block = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: 0x6a7a8a }));
+            block.position.y = h / 2; g.add(block);
+            const roof = new THREE.Mesh(new THREE.BoxGeometry(w + 0.6, 0.4, d + 0.6), new THREE.MeshLambertMaterial({ color: 0x3a4a5a }));
+            roof.position.y = h + 0.2; g.add(roof);
+            const gate = new THREE.Mesh(new THREE.BoxGeometry(w * 0.35, h * 0.6, 0.2), new THREE.MeshLambertMaterial({ color: 0x1a1a1a }));
+            gate.position.set(0, h * 0.35, d / 2 + 0.1); g.add(gate);
+            g.position.set(x, gy, z); scene.add(g);
+            buildings.push({ group: g, position: new THREE.Vector3(x, gy, z), width: w, height: h, depth: d, halfW: w/2, halfD: d/2, health: BUILDING_HP, maxHealth: BUILDING_HP, destroyed: false, color: 0x6a7a8a });
+        }
+
+        function createBunker(x, z, w, h, d) {
+            const gy = getTerrainHeight(x, z);
+            const g = new THREE.Group();
+            const block = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: 0x7a7a6a }));
+            block.position.y = h / 2; g.add(block);
+            const roofGeo = new THREE.CylinderGeometry(w * 0.55, w * 0.55, d * 0.9, 4);
+            roofGeo.rotateX(Math.PI / 2); roofGeo.rotateY(Math.PI / 4);
+            const roof = new THREE.Mesh(roofGeo, new THREE.MeshLambertMaterial({ color: 0x5a5a4a }));
+            roof.position.y = h + 0.3; roof.scale.set(1, 1, 0.5); g.add(roof);
+            g.position.set(x, gy, z); scene.add(g);
+            buildings.push({ group: g, position: new THREE.Vector3(x, gy, z), width: w, height: h, depth: d, halfW: w/2, halfD: d/2, health: BUILDING_HP, maxHealth: BUILDING_HP, destroyed: false, color: 0x7a7a6a });
+        }
+
+        function createTower(x, z, w, h, d) {
+            const gy = getTerrainHeight(x, z);
+            const g = new THREE.Group();
+            const block = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: 0x9a8a6a }));
+            block.position.y = h / 2; g.add(block);
+            const platform = new THREE.Mesh(new THREE.BoxGeometry(w * 1.6, 0.6, d * 1.6), new THREE.MeshLambertMaterial({ color: 0x5a4a3a }));
+            platform.position.y = h + 0.3; g.add(platform);
+            g.position.set(x, gy, z); scene.add(g);
+            buildings.push({ group: g, position: new THREE.Vector3(x, gy, z), width: w, height: h, depth: d, halfW: w/2, halfD: d/2, health: BUILDING_HP, maxHealth: BUILDING_HP, destroyed: false, color: 0x9a8a6a });
+        }
+
+        function createHangar(x, z, w, h, d) {
+            const gy = getTerrainHeight(x, z);
+            const g = new THREE.Group();
+            const wallMat = new THREE.MeshLambertMaterial({ color: 0x7a8a7a });
+            const wallGeo = new THREE.BoxGeometry(0.6, h, d);
+            const wL = new THREE.Mesh(wallGeo, wallMat); wL.position.set(-w/2, h/2, 0); g.add(wL);
+            const wR = wL.clone(); wR.position.x = w/2; g.add(wR);
+            const back = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.6), wallMat); back.position.set(0, h/2, -d/2); g.add(back);
+            const roofGeo = new THREE.CylinderGeometry(w/2, w/2, d, 6, 1, false, 0, Math.PI);
+            roofGeo.rotateZ(Math.PI / 2); roofGeo.rotateY(Math.PI / 2);
+            const roof = new THREE.Mesh(roofGeo, new THREE.MeshLambertMaterial({ color: 0x4a5a6a }));
+            roof.position.set(0, h, 0); g.add(roof);
+            g.position.set(x, gy, z); scene.add(g);
+            buildings.push({ group: g, position: new THREE.Vector3(x, gy, z), width: w, height: h, depth: d, halfW: w/2, halfD: d/2, health: BUILDING_HP, maxHealth: BUILDING_HP, destroyed: false, color: 0x7a8a7a });
+        }
+
+        function createTankBuilding(x, z, radius, height) {
+            const gy = getTerrainHeight(x, z);
+            const g = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, height, 8), new THREE.MeshLambertMaterial({ color: 0x8a9aaa }));
+            body.position.y = height/2 + 0.4; g.add(body);
+            const dome = new THREE.Mesh(new THREE.SphereGeometry(radius, 8, 4, 0, Math.PI*2, 0, Math.PI/2), new THREE.MeshLambertMaterial({ color: 0x6a7a8a }));
+            dome.position.y = height + 0.4; g.add(dome);
+            g.position.set(x, gy, z); scene.add(g);
+            buildings.push({ group: g, position: new THREE.Vector3(x, gy, z), width: radius * 2, height: height, depth: radius * 2, halfW: radius, halfD: radius, health: BUILDING_HP, maxHealth: BUILDING_HP, destroyed: false, color: 0x8a9aaa });
+        }
+
+        function createCity() {
+            const count = DESANT_CITY_BUILDINGS;
+            const gridSize = 11;
+            const cell = 20;
+            const types = ['box', 'box', 'box', 'warehouse', 'bunker', 'tower'];
+            let placed = 0;
+            for (let gx = 0; gx < gridSize && placed < count; gx++) {
+                for (let gz = 0; gz < gridSize && placed < count; gz++) {
+                    if (gx === 0 || gz === 0 || gx === gridSize-1 || gz === gridSize-1) continue;
+                    if (Math.random() < 0.2) continue;
+                    const x = (gx - (gridSize-1)/2) * cell + (Math.random() - 0.5) * 3;
+                    const z = (gz - (gridSize-1)/2) * cell + (Math.random() - 0.5) * 3;
+                    const type = types[Math.floor(Math.random() * types.length)];
+                    const w = 8 + Math.random() * 4;
+                    const h = 6 + Math.random() * 8;
+                    const d = 8 + Math.random() * 4;
+                    if (type === 'warehouse') createWarehouse(x, z, w, h * 0.6, d);
+                    else if (type === 'bunker') createBunker(x, z, w * 0.9, h * 0.5, d * 0.9);
+                    else if (type === 'tower') createTower(x, z, w * 0.5, h * 1.5, d * 0.5);
+                    else {
+                        const wallColors = [0x8a8a7a, 0x9a8a7a, 0xaa5544, 0x7a8a7a];
+                        const roofColors = [0x5a5a4a, 0x553322, 0x4a5a6a];
+                        makeBoxBuilding(x, z, w, h, d,
+                            wallColors[Math.floor(Math.random()*wallColors.length)],
+                            roofColors[Math.floor(Math.random()*roofColors.length)]);
+                    }
+                    placed++;
+                }
+            }
+        }
+
+        function createBuildings() {
+            if (GAME_MODE === 'desant') {
+                createCity();
+                return;
+            }
+            const sc = MAP_SIZE / 2000;
+            if (GAME_MODE === 'defense') {
+                const R = CRATER_RADIUS * sc;
+                for (let i = 0; i < 6; i++) {
+                    const ang = (i / 6) * Math.PI * 2;
+                    const r = R * 1.8;
+                    const x = Math.cos(ang) * r, z = Math.sin(ang) * r;
+                    if (i % 2 === 0) createBunker(x, z, 10*sc, 5*sc, 10*sc);
+                    else makeBoxBuilding(x, z, 8*sc, 6*sc, 8*sc, 0x8a8a7a, 0x5a5a4a);
+                }
+                return;
+            }
+            function clusterNW() {
+                const cx = -140 * sc, cz = 140 * sc;
+                createWarehouse(cx - 15*sc, cz + 5*sc, 20*sc, 7*sc, 14*sc);
+                makeBoxBuilding(cx + 10*sc, cz - 5*sc, 12*sc, 9*sc, 12*sc, 0x8a8a7a, 0x5a5a4a);
+                makeBoxBuilding(cx + 5*sc, cz + 20*sc, 10*sc, 9*sc, 10*sc, 0xaa5544, 0x553322);
+                createTankBuilding(cx - 25*sc, cz - 12*sc, 3.5*sc, 11*sc);
+                createTower(cx + 25*sc, cz + 15*sc, 5*sc, 12*sc, 5*sc);
+                const gy = getTerrainHeight(cx, cz);
+                buildingClusters.push({ center: new THREE.Vector3(cx, gy, cz), count: 5 });
+            }
+            function clusterNE() {
+                const cx = 150 * sc, cz = 130 * sc;
+                createBunker(cx - 10*sc, cz - 10*sc, 14*sc, 5*sc, 14*sc);
+                createBunker(cx + 12*sc, cz + 8*sc, 12*sc, 4.5*sc, 12*sc);
+                makeBoxBuilding(cx - 20*sc, cz + 15*sc, 12*sc, 9*sc, 12*sc, 0x8a8a7a, 0x5a5a4a);
+                createHangar(cx + 20*sc, cz - 15*sc, 16*sc, 8*sc, 20*sc);
+                createTankBuilding(cx + 5*sc, cz + 25*sc, 4*sc, 12*sc);
+                const gy = getTerrainHeight(cx, cz);
+                buildingClusters.push({ center: new THREE.Vector3(cx, gy, cz), count: 5 });
+            }
+            function clusterSW() {
+                const cx = -150 * sc, cz = -150 * sc;
+                makeBoxBuilding(cx - 10*sc, cz - 10*sc, 12*sc, 10*sc, 12*sc, 0xaa5544, 0x553322);
+                makeBoxBuilding(cx + 10*sc, cz + 5*sc, 10*sc, 9*sc, 10*sc, 0xaa5544, 0x553322);
+                createTower(cx + 25*sc, cz + 20*sc, 5*sc, 14*sc, 5*sc);
+                createWarehouse(cx - 20*sc, cz + 15*sc, 18*sc, 7*sc, 14*sc);
+                createTankBuilding(cx + 15*sc, cz - 20*sc, 3.5*sc, 10*sc);
+                const gy = getTerrainHeight(cx, cz);
+                buildingClusters.push({ center: new THREE.Vector3(cx, gy, cz), count: 5 });
+            }
+            function clusterSE() {
+                const cx = 150 * sc, cz = -140 * sc;
+                createWarehouse(cx - 12*sc, cz - 5*sc, 22*sc, 8*sc, 16*sc);
+                createWarehouse(cx + 15*sc, cz + 10*sc, 20*sc, 7*sc, 14*sc);
+                createHangar(cx + 5*sc, cz - 20*sc, 14*sc, 7*sc, 18*sc);
+                createTankBuilding(cx - 25*sc, cz + 15*sc, 3.5*sc, 10*sc);
+                makeBoxBuilding(cx + 25*sc, cz - 15*sc, 12*sc, 9*sc, 12*sc, 0x8a8a7a, 0x5a5a4a);
+                const gy = getTerrainHeight(cx, cz);
+                buildingClusters.push({ center: new THREE.Vector3(cx, gy, cz), count: 5 });
+            }
+            clusterNW(); clusterNE(); clusterSW(); clusterSE();
+            makeBoxBuilding(-90*sc, -40*sc, 12*sc, 9*sc, 12*sc, 0x8a8a7a, 0x5a5a4a);
+            makeBoxBuilding(80*sc, 90*sc, 12*sc, 10*sc, 12*sc, 0xaa5544, 0x553322);
+            createBunker(-70*sc, -150*sc, 14*sc, 5*sc, 14*sc);
+            createTower(100*sc, -60*sc, 6*sc, 14*sc, 6*sc);
+            createTankBuilding(170*sc, -30*sc, 3.5*sc, 10*sc);
+        }
+
+        function buildTankGroup(color, armor = 0, type = 'normal') {
+            const tank = new THREE.Group();
+            const isTiger = type === 'tiger';
+            const isSherman = type === 'sherman';
+            const es = 1 + armor * 0.04;
+            let bodyW, bodyH, bodyD;
+            if (isTiger) { bodyW = 3.6; bodyH = 1.6; bodyD = 6.0; }
+            else if (isSherman) { bodyW = 3.2; bodyH = 1.2; bodyD = 5.8; }
+            else { bodyW = 3.4; bodyH = 1.3; bodyD = 5.2; }
+            const body = new THREE.Mesh(new THREE.BoxGeometry(bodyW*es, bodyH*es, bodyD*es), new THREE.MeshLambertMaterial({ color }));
+            body.position.y = isTiger ? 1.15 : 1.0; tank.add(body);
+            if (isSherman) {
+                const slope = new THREE.Mesh(new THREE.BoxGeometry(3.2*es, 0.7*es, 1.4*es), body.material);
+                slope.position.set(0, 1.5, 2.7); slope.rotation.x = -0.5; tank.add(slope);
+                const upper = new THREE.Mesh(new THREE.BoxGeometry(2.8*es, 0.6*es, 4.6*es), body.material);
+                upper.position.y = 1.85; tank.add(upper);
+            } else if (isTiger) {
+                const upper = new THREE.Mesh(new THREE.BoxGeometry(3.2*es, 0.9*es, 5.0*es), body.material);
+                upper.position.y = 2.1; tank.add(upper);
+            } else {
+                const upper = new THREE.Mesh(new THREE.BoxGeometry(3.0*es, 0.7*es, 4.4*es), body.material);
+                upper.position.y = 1.9; tank.add(upper);
+            }
+            let turret;
+            if (isSherman) {
+                turret = new THREE.Mesh(new THREE.CylinderGeometry(1.1*es, 1.2*es, 1.3*es, 6), new THREE.MeshLambertMaterial({ color }));
+                turret.position.set(0, 2.85, 0.9); tank.add(turret);
+            } else if (isTiger) {
+                turret = new THREE.Mesh(new THREE.BoxGeometry(2.4*es, 1.0*es, 2.6*es), new THREE.MeshLambertMaterial({ color }));
+                turret.position.set(0, 2.95, 0.7); tank.add(turret);
+            } else {
+                turret = new THREE.Mesh(new THREE.CylinderGeometry(1.2*es, 1.3*es, 1.0*es, 6), new THREE.MeshLambertMaterial({ color }));
+                turret.position.set(0, 2.7, 0.9); tank.add(turret);
+            }
+            let bLen, bRad, bPosZ, bPosY;
+            if (isSherman) { bLen = 6.5; bRad = 0.12; bPosZ = 3.8; bPosY = 2.95; }
+            else if (isTiger) { bLen = 5.6; bRad = 0.2; bPosZ = 3.3; bPosY = 3.0; }
+            else { bLen = 4.5; bRad = 0.15; bPosZ = 2.7; bPosY = 2.9; }
+            const barrel = new THREE.Mesh(new THREE.CylinderGeometry(bRad, bRad + 0.03, bLen, 6), BARREL_MAT);
+            barrel.rotation.x = Math.PI / 2; barrel.position.set(0, bPosY, bPosZ); tank.add(barrel);
+            const muzzle = new THREE.Object3D();
+            muzzle.position.set(0, bPosY, bPosZ + bLen / 2); tank.add(muzzle);
+            const trackW = isTiger ? 1.0 : (isSherman ? 0.65 : 0.7);
+            const trackD = isTiger ? 6.2 : (isSherman ? 5.9 : 5.4);
+            const tGeo = new THREE.BoxGeometry(trackW, 1.0, trackD * es);
+            const tLX = isTiger ? -1.8 : (isSherman ? -1.55 : -1.6);
+            const tL = new THREE.Mesh(tGeo, TRACK_MAT); tL.position.set(tLX, 0.5, 0); tank.add(tL);
+            const tR = new THREE.Mesh(tGeo, TRACK_MAT); tR.position.set(-tLX, 0.5, 0); tank.add(tR);
+            const wGeo = new THREE.CylinderGeometry(isTiger ? 0.6 : 0.5, isTiger ? 0.6 : 0.5, 0.7, 6);
+            const wc = isTiger ? 3 : 2;
+            for (let i = -wc; i <= wc; i++) {
+                const wl = new THREE.Mesh(wGeo, WHEEL_MAT); wl.rotation.z = Math.PI / 2; wl.position.set(tLX, 0.5, i*1.0); tank.add(wl);
+                const wr = wl.clone(); wr.position.x = -tLX; tank.add(wr);
+            }
+            if (isTiger) {
+                const sGeo = new THREE.BoxGeometry(0.12, 0.8, 5.6);
+                for (const side of [-1, 1]) { const s = new THREE.Mesh(sGeo, TRACK_MAT); s.position.set(side * 2.3, 0.95, 0); tank.add(s); }
+            }
+            if (armor >= 3) {
+                const pMat = new THREE.MeshLambertMaterial({ color: 0x444444 });
+                const pGeo = new THREE.BoxGeometry(bodyW + 0.2, 0.25, 1.5);
+                const pF = new THREE.Mesh(pGeo, pMat); pF.position.set(0, 1.4, bodyD / 2 - 0.2); tank.add(pF);
+                const pR = pF.clone(); pR.position.z = -(bodyD / 2 - 0.2); tank.add(pR);
+            }
+            const fg = new THREE.Group(); fg.visible = false; tank.add(fg);
+            return { tank, bodyMat: body.material, turretMat: turret.material, muzzle, fireGroup: fg };
+        }
+
+        function getSector(x, z) {
+            if (x < 0 && z < 0) return 0;
+            if (x >= 0 && z < 0) return 1;
+            if (x < 0 && z >= 0) return 2;
+            return 3;
+        }
+
+        function createEnemyTank(x, z, rotY = 0, color = 0x4a5a3a, type = 'normal') {
+            const b = buildTankGroup(color, 0, type);
+            b.tank.position.set(x, getTerrainHeight(x, z), z); b.tank.rotation.y = rotY; scene.add(b.tank);
+            const sector = GAME_MODE === 'desant' ? getSector(x, z) : -1;
+            tanks.push({
+                group: b.tank, bodyMat: b.bodyMat, turretMat: b.turretMat, originalColor: color,
+                type, maxHp: type === 'tiger' ? 2 : 1, hp: type === 'tiger' ? 2 : 1,
+                patrolCenter: new THREE.Vector3(x, 0, z), patrolRadius: 12 + Math.random()*18,
+                patrolAngle: Math.random()*Math.PI*2,
+                patrolSpeed: (0.2 + Math.random()*0.25) * ENEMY_SPEED_MULT * (type === 'tiger' ? 0.7 : 1),
+                muzzle: b.muzzle, destroyed: false, fireGroup: b.fireGroup,
+                fireParticles: [], smokeParticles: [], fireLight: null, fireTime: 0,
+                fireCooldown: Math.random()*3, fireCooldownMax: type === 'tiger' ? 2.0 : 3.5,
+                muzzleWorldPos: new THREE.Vector3(), muzzleWorldDir: new THREE.Vector3(0, 0, 1),
+                aggressive: false, aggroReason: null, aggroTimer: 0, isTiger: type === 'tiger',
+                sector: sector, revenge: false
+            });
+        }
+
+        const ALLY_HP_BASE = 100;
+        function createAllyTank(x, z, rotY = 0, color = 0x2288cc, type = 'ally_heavy', withWings = false) {
+            const isSherman = type === 'sherman';
+            const armor = isSherman ? SHERMAN_ARMOR : HEAVY_ARMOR;
+            const b = buildTankGroup(color, armor, isSherman ? 'sherman' : 'normal');
+            const startY = withWings ? DESANT_START_HEIGHT : getTerrainHeight(x, z);
+            b.tank.position.set(x, startY, z); b.tank.rotation.y = rotY; scene.add(b.tank);
+            let hp;
+            if (isSherman && desantMode) {
+                hp = SHERMAN_HP_DESANT;
+            } else if (isSherman) {
+                hp = SHERMAN_HP_NORMAL;
+            } else {
+                hp = ALLY_HP_BASE + armor * ARMOR_PER_LEVEL;
+            }
+            const speedFactor = getSpeedFactorByArmor(armor);
+            const ally = {
+                group: b.tank, bodyMat: b.bodyMat, turretMat: b.turretMat, originalColor: color,
+                muzzle: b.muzzle, destroyed: false, fireGroup: b.fireGroup,
+                fireParticles: [], smokeParticles: [], fireLight: null, fireTime: 0,
+                fireCooldown: Math.random()*2,
+                fireCooldownMax: isSherman ? 1.8 : 2.5,
+                muzzleWorldPos: new THREE.Vector3(), muzzleWorldDir: new THREE.Vector3(0, 0, 1),
+                armorLevel: armor, hp, maxHp: hp,
+                flankOffset: (Math.random()-0.5)*30, preferredDist: 45 + Math.random()*20,
+                speedFactor, isSherman,
+                wingGroup: null,
+                isFlyingWithPlayer: withWings,
+                flightOffset: new THREE.Vector3(0, 0, 0),
+                flightPhase: Math.random()*Math.PI*2
+            };
+            allyTanks.push(ally);
+            if (withWings) {
+                ally.wingGroup = buildWings(b.tank, isSherman ? 0x4a8acc : 0x2288cc);
+            }
+        }
+
+        function createEnemies(count, mix) {
+            const sc = MAP_SIZE / 2000;
+            const used = [];
+            function isFar(x, z, md) { for (const p of used) if (Math.hypot(p.x-x, p.z-z) < md) return false; return true; }
+
+            if (GAME_MODE === 'desant') {
+                for (let i = 0; i < count; i++) {
+                    let x, z, tries = 0;
+                    do {
+                        x = (Math.random() - 0.5) * 160;
+                        z = (Math.random() - 0.5) * 160;
+                        tries++;
+                    } while (!isFar(x, z, 12) && tries < 50);
+                    used.push({ x, z });
+                    createEnemyTank(x, z, Math.random() * Math.PI * 2, 0x5a4a2a, 'tiger');
+                }
+                return;
+            }
+
+            if (GAME_MODE !== 'defense') {
+                let spawned = 0;
+                for (const cl of buildingClusters) {
+                    const n = Math.floor(cl.count / 3);
+                    for (let i = 0; i < n && spawned < count; i++) {
+                        const ang = Math.random()*Math.PI*2, d = 40 + Math.random()*30;
+                        const x = cl.center.x + Math.cos(ang)*d, z = cl.center.z + Math.sin(ang)*d;
+                        if (!isFar(x, z, 15)) continue;
+                        used.push({ x, z });
+                        const isT = Math.random() < (mix ? mix.tiger : 0.25);
+                        const cols = [0x5a4a2a, 0x6a5a3a, 0x4a4a3a, 0x5a5a4a];
+                        createEnemyTank(x, z, Math.random()*Math.PI*2, cols[Math.floor(Math.random()*cols.length)], isT ? 'tiger' : 'normal');
+                        spawned++;
+                    }
+                }
+            }
+
+            if (GAME_MODE === 'defense') {
+                const R = CRATER_RADIUS * sc;
+                const spawnRadius = R * 2.2;
+                const total = mix.normal + mix.tiger + mix.sherman;
+                const baseArr = [
+                    ...Array(mix.normal).fill('normal'),
+                    ...Array(mix.tiger).fill('tiger'),
+                    ...Array(mix.sherman).fill('sherman')
+                ];
+                for (let i = baseArr.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [baseArr[i], baseArr[j]] = [baseArr[j], baseArr[i]];
+                }
+                for (let i = 0; i < total; i++) {
+                    const ang = (i / total) * Math.PI * 2 + Math.random() * 0.3;
+                    const r = spawnRadius + Math.random() * 60;
+                    const x = Math.cos(ang) * r, z = Math.sin(ang) * r;
+                    const type = baseArr[i];
+                    const cols = type === 'tiger' ? [0x5a4a2a, 0x6a5a3a] : type === 'sherman' ? [0x4a7a4a, 0x3a6a4a] : [0x4a5a3a, 0x5a4a3a, 0x3a4a5a, 0x4a3a5a];
+                    createEnemyTank(x, z, Math.atan2(-x, -z), cols[Math.floor(Math.random()*cols.length)], type);
+                }
+                return;
+            }
+
+            const base = [
+                [30,30],[-40,45],[50,-40],[-55,-50],[75,55],[-80,15],[15,-80],[110,110],[-110,-110],[160,-60],
+                [-160,60],[90,-120],[-90,120],[140,140],[-140,-140],[200,0],[-200,0],[0,200],[0,-200],[220,180],
+                [-220,-180],[250,-100],[-250,100],[180,-220],[-180,220],[300,300],[-300,-300],[320,-280],[-320,280],[0,350]
+            ];
+            const scaled = base.map(([x,z]) => [x*sc, z*sc]);
+            let spawned = tanks.length;
+            for (let i = 0; i < scaled.length && spawned < count; i++) {
+                const [x, z] = scaled[i];
+                if (!isFar(x, z, 15)) continue;
+                used.push({ x, z });
+                const isT = Math.random() < (mix ? mix.tiger : 0.25);
+                const cols = [0x4a5a3a, 0x5a4a3a, 0x3a4a5a, 0x4a3a5a, 0x5a5a3a, 0x3a5a4a, 0x5a3a3a, 0x5a4a2a, 0x6a5a3a];
+                createEnemyTank(x, z, Math.random()*Math.PI*2, cols[i % cols.length], isT ? 'tiger' : 'normal');
+                spawned++;
+            }
+        }
+
+        function createAllies(count, withWings = false) {
+            if (GAME_MODE === 'desant') {
+                const positions = [[6, 4], [-6, 4]];
+                for (let i = 0; i < Math.min(count, 2); i++) {
+                    const [ox, oz] = positions[i];
+                    createAllyTank(ox, oz, 0, 0x4a8acc, 'sherman', true);
+                }
+                return;
+            }
+            const sc = MAP_SIZE / 2000;
+            if (GAME_MODE === 'defense') {
+                const FLAT = FLAT_PLATEAU_RADIUS * sc;
+                const positions = [[FLAT * 0.5, 0], [-FLAT * 0.5, 0], [0, FLAT * 0.5]];
+                for (let i = 0; i < Math.min(count, 3); i++) {
+                    const [ox, oz] = positions[i];
+                    createAllyTank(ox, oz, 0, 0x4a8acc, 'sherman', false);
+                }
+                return;
+            }
+            const pos = [[-15,10],[15,10],[-25,20],[25,20],[0,25]];
+            for (let i = 0; i < count; i++) {
+                const [ox, oz] = pos[i % pos.length];
+                const isSherman = i < 2;
+                createAllyTank(ox*sc, oz*sc, 0, isSherman ? 0x4a8acc : 0x2288cc, isSherman ? 'sherman' : 'ally_heavy', false);
+            }
+        }
+
+        function setupMode(mode, strategy) {
+            GAME_MODE = mode; ALLY_STRATEGY = strategy || 'smart';
+            desantMode = (mode === 'desant');
+            isFlying = false;
+            isBombAiming = false;
+            bombSalvoQueue = [];
+            if (bombAimMarker) bombAimMarker.visible = false;
+            bombHintEl.classList.remove('active');
+            crosshairEl.classList.remove('bomb');
+            altitudeWarningEl.classList.remove('active');
+            flightHudEl.classList.remove('active');
+
+            if (mode === 'solo') {
+                MAP_SIZE = 2000; MAP_LIMIT = 280;
+                CRATER_RADIUS = 24; HILL_RADIUS = 60; HILL_HEIGHT = 6; CRATER_DEPTH = 12;
+                FLAT_PLATEAU_RADIUS = 0;
+                ENEMY_COUNT = 15; ALLY_COUNT = 0; BARREL_COUNT = 8; TREE_COUNT = 15;
+                GRASS_COUNT = 6000; GRASS_RADIUS = 300;
+                ENEMY_MIX = { normal: 15, tiger: 0, sherman: 0 };
+            } else if (mode === 'allies') {
+                MAP_SIZE = 4000; MAP_LIMIT = 560;
+                CRATER_RADIUS = 24; HILL_RADIUS = 60; HILL_HEIGHT = 6; CRATER_DEPTH = 12;
+                FLAT_PLATEAU_RADIUS = 0;
+                ENEMY_COUNT = 30; ALLY_COUNT = 5; BARREL_COUNT = 12; TREE_COUNT = 20;
+                GRASS_COUNT = 8000; GRASS_RADIUS = 600;
+                ENEMY_MIX = { normal: 30, tiger: 0, sherman: 0 };
+            } else if (mode === 'defense') {
+                MAP_SIZE = 2000; MAP_LIMIT = 280;
+                CRATER_RADIUS = 100; HILL_RADIUS = 0; HILL_HEIGHT = 0; CRATER_DEPTH = 10;
+                FLAT_PLATEAU_RADIUS = 50;
+                ENEMY_COUNT = 30;
+                ALLY_COUNT = 3;
+                BARREL_COUNT = 8; TREE_COUNT = 10;
+                GRASS_COUNT = 4000; GRASS_RADIUS = 300;
+                ENEMY_MIX = { normal: 15, tiger: 7, sherman: 8 };
+            } else if (mode === 'desant') {
+                MAP_SIZE = 2000; MAP_LIMIT = 280;
+                CRATER_RADIUS = 0; HILL_RADIUS = 0; HILL_HEIGHT = 0; CRATER_DEPTH = 0;
+                FLAT_PLATEAU_RADIUS = 0;
+                ENEMY_COUNT = 20; ALLY_COUNT = 2;
+                BARREL_COUNT = 8; TREE_COUNT = 5;
+                GRASS_COUNT = 3000; GRASS_RADIUS = 300;
+                ENEMY_MIX = { normal: 0, tiger: 20, sherman: 0 };
+            }
+
+            clearWorld();
+            scene.fog = new THREE.Fog(0x87CEEB, 200*(MAP_SIZE/2000), 600*(MAP_SIZE/2000));
+            createGround(); createGrass(); createTrees(); createBuildings(); createBarrels();
+            createEnemies(ENEMY_COUNT, ENEMY_MIX);
+            if (ALLY_COUNT > 0) createAllies(ALLY_COUNT, desantMode);
+            totalTanksEl.textContent = tanks.length;
+            barrelsLeftEl.textContent = barrels.length;
+            buildingsLeftEl.textContent = buildings.length;
+            if (ALLY_COUNT > 0) { alliesHudEl.style.display = 'flex'; alliesLeftEl.textContent = allyTanks.length; }
+            else alliesHudEl.style.display = 'none';
+            resetPlayerState();
+            camera.position.set(0, 20, -25); camera.lookAt(0, 0, 0);
+            modeMenuEl.style.display = 'none';
+            winScreenEl.classList.remove('active');
+        }
+        const setupModeFn = setupMode;
+
+        function resetPlayerState() {
+            if (desantMode) {
+                playerTank.position.set(0, DESANT_START_HEIGHT, -80);
+                isFlying = true;
+                playerPitch = 0;
+                playerRoll = 0;
+                flightSpeed = DESANT_FLIGHT_SPEED;
+                playerTank.rotation = 0;
+                flightHudEl.classList.add('active');
+                buildPlayerWings();
+                playerTank.rocketsUnlocked = true;
+                playerTank.rocketsCount = 6;
+            } else {
+                playerTank.position.set(0, getTerrainHeight(0, 0), 0);
+                isFlying = false;
+                playerTank.rocketsUnlocked = false;
+                playerTank.rocketsCount = 0;
+                removePlayerWings();
+            }
+            isBombAiming = false;
+            bombSalvoQueue = [];
+            if (bombAimMarker) bombAimMarker.visible = false;
+            bombHintEl.classList.remove('active');
+            crosshairEl.classList.remove('bomb');
+
+            playerTank.velocity.set(0, 0, 0);
+            playerTank.health = playerTank.baseHealth;
+            playerTank.maxHealth = playerTank.baseHealth;
+            playerTank.armorLevel = 0;
+            playerTank.upgradePoints = 0;
+            playerTank.reloadTime = 0;
+            playerTank.destroyed = false;
+            playerTank.rocketReloadTime = 0;
+            rocketVisuals.forEach(v => v.visible = false);
+            playerGroup.position.copy(playerTank.position);
+            playerGroup.rotation.order = 'YXZ';
+            playerGroup.rotation.y = playerTank.rotation;
+            playerGroup.rotation.x = desantMode ? playerPitch : 0;
+            playerGroup.rotation.z = 0;
+
+            kills = 0; shotsFired = 0; shotsHit = 0;
+            killsEl.textContent = '0'; accuracyEl.textContent = '100';
+            healthFillEl.style.width = '100%'; reloadEl.classList.remove('active');
+            winScreenEl.querySelector('h1').textContent = 'ПОБЕДА';
+            winScreenEl.querySelector('h1').style.color = '#ffaa00';
+            winScreenEl.querySelector('p').textContent = 'ВСЕ ТАНКИ УНИЧТОЖЕНЫ';
+            updateUpgradeUI();
+        }
+
+        document.querySelectorAll('.modeCard').forEach(card => {
+            card.addEventListener('click', () => {
+                try {
+                    const mode = card.dataset.mode;
+                    if (mode === 'solo') {
+                        allyStrategyBlockEl.style.display = 'none';
+                        setupModeFn('solo', 'smart');
+                    } else if (mode === 'allies') {
+                        allyStrategyBlockEl.style.display = 'flex';
+                    } else if (mode === 'defense') {
+                        allyStrategyBlockEl.style.display = 'none';
+                        setupModeFn('defense', 'smart');
+                    } else if (mode === 'desant') {
+                        allyStrategyBlockEl.style.display = 'none';
+                        setupModeFn('desant', 'smart');
+                    }
+                } catch (err) { console.error(err); }
+            });
+        });
+        let selectedStrategy = 'smart';
+        document.querySelectorAll('.strategyBtn[data-strategy]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.strategyBtn[data-strategy]').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                selectedStrategy = btn.dataset.strategy;
+            });
+        });
+        startAlliesBtn.addEventListener('click', () => {
+            try { setupModeFn('allies', selectedStrategy); } catch (err) { console.error(err); }
+        });
+        backToMenuBtn.addEventListener('click', () => {
+            winScreenEl.classList.remove('active'); clearWorldFn();
+            modeMenuEl.style.display = 'flex'; allyStrategyBlockEl.style.display = 'none';
+        });
+
+        function colorToHexStr(c) { return '#' + c.toString(16).padStart(6, '0'); }
+        function buildColorSwatches(container, colors, sel, cb) {
+            container.innerHTML = '';
+            colors.forEach(({ name, color }) => {
+                const sw = document.createElement('div');
+                sw.className = 'colorSwatch' + (color === sel ? ' selected' : '');
+                sw.style.background = colorToHexStr(color); sw.title = name;
+                sw.addEventListener('click', () => {
+                    container.querySelectorAll('.colorSwatch').forEach(s => s.classList.remove('selected'));
+                    sw.classList.add('selected'); cb(color);
+                });
+                container.appendChild(sw);
+            });
+        }
+        function buildPatternSwatches(container, pats, sel, cb) {
+            container.innerHTML = '';
+            pats.forEach(({ name, value }) => {
+                const sw = document.createElement('div');
+                sw.className = 'patternSwatch' + (value === sel ? ' selected' : '');
+                sw.textContent = name;
+                sw.addEventListener('click', () => {
+                    container.querySelectorAll('.patternSwatch').forEach(s => s.classList.remove('selected'));
+                    sw.classList.add('selected'); cb(value);
+                });
+                container.appendChild(sw);
+            });
+        }
+        const customBodyColorsEl = document.getElementById('bodyColors');
+        const customTurretColorsEl = document.getElementById('turretColors');
+        const customBarrelColorsEl = document.getElementById('barrelColors');
+        const customPatternsEl = document.getElementById('patterns');
+
+        function refreshCustomizationUI() {
+            buildColorSwatches(customBodyColorsEl, BODY_COLORS, customization.bodyColor, (c) => {
+                customization.bodyColor = c; if (pMaterials.body) pMaterials.body.color.setHex(c); drawPreview();
+            });
+            buildColorSwatches(customTurretColorsEl, TURRET_COLORS, customization.turretColor, (c) => {
+                customization.turretColor = c; if (pMaterials.turret) pMaterials.turret.color.setHex(c); drawPreview();
+            });
+            buildColorSwatches(customBarrelColorsEl, BARREL_COLORS, customization.barrelColor, (c) => {
+                customization.barrelColor = c; if (pMaterials.barrel) pMaterials.barrel.color.setHex(c); drawPreview();
+            });
+            buildPatternSwatches(customPatternsEl, PATTERNS, customization.pattern, (v) => {
+                customization.pattern = v; rebuildPlayerTank(); drawPreview();
+            });
+        }
+        const refreshCustomizationUIFn = refreshCustomizationUI;
+
+        function rebuildPlayerTank() {
+            buildPlayerTank();
+            playerMuzzle = pParts.muzzle; pBarrel = pParts.barrel; pTurret = pParts.turret;
+            playerGroup.position.copy(playerTank.position);
+            playerGroup.rotation.y = playerTank.rotation; playerGroup.rotation.x = 0;
+            rocketVisuals.forEach(v => { if (!playerTank.rocketsUnlocked) v.visible = false; });
+        }
+
+        function drawPreview() {
+            const canvas = document.getElementById('previewCanvas'); if (!canvas) return;
+            const ctx = canvas.getContext('2d'); const W = canvas.width, H = canvas.height;
+            ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0, 0, W, H);
+            ctx.fillStyle = '#3a5a3a'; ctx.fillRect(0, H - 30, W, 30);
+            const bx = W / 2 - 70, by = H - 90, bw = 140, bh = 50;
+            ctx.fillStyle = colorToHexStr(customization.bodyColor); ctx.fillRect(bx, by, bw, bh);
+            ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.strokeRect(bx, by, bw, bh);
+            if (customization.pattern === 'stripes') { ctx.fillStyle = '#111'; for (let i = 0; i < 3; i++) ctx.fillRect(bx + 15 + i*40, by + 5, 8, bh - 10); }
+            else if (customization.pattern === 'cross') { ctx.fillStyle = '#111'; ctx.fillRect(bx + bw/2 - 4, by + 5, 8, bh - 10); ctx.fillRect(bx + 10, by + bh/2 - 4, bw - 20, 8); }
+            else if (customization.pattern === 'chevron') {
+                ctx.strokeStyle = '#111'; ctx.lineWidth = 5;
+                ctx.beginPath(); ctx.moveTo(bx + 30, by + 10); ctx.lineTo(bx + 60, by + bh/2); ctx.lineTo(bx + 30, by + bh - 10); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(bx + bw - 30, by + 10); ctx.lineTo(bx + bw - 60, by + bh/2); ctx.lineTo(bx + bw - 30, by + bh - 10); ctx.stroke();
+            } else if (customization.pattern === 'stars') {
+                ctx.fillStyle = '#111';
+                for (let i = 0; i < 3; i++) {
+                    const cx = bx + 30 + i*40, cy = by + bh/2;
+                    ctx.beginPath();
+                    for (let j = 0; j < 5; j++) {
+                        const a = -Math.PI/2 + j*2*Math.PI/5, r = 8;
+                        const x = cx + Math.cos(a)*r, y = cy + Math.sin(a)*r;
+                        if (j === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                    }
+                    ctx.closePath(); ctx.fill();
+                }
+            }
+            ctx.fillStyle = colorToHexStr(customization.turretColor);
+            ctx.beginPath(); ctx.ellipse(W/2, by, 35, 45, 0, Math.PI, 0); ctx.fill();
+            ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.fillStyle = colorToHexStr(customization.barrelColor);
+            ctx.fillRect(W/2 + 30, by - 25, 60, 10);
+            ctx.strokeStyle = '#000'; ctx.strokeRect(W/2 + 30, by - 25, 60, 10);
+            ctx.fillStyle = '#888'; ctx.font = '11px Courier New'; ctx.textAlign = 'center';
+            ctx.fillText('ПРЕВЬЮ', W/2, H - 8);
+        }
+        const drawPreviewFn = drawPreview;
+        customizeBtn.addEventListener('click', () => {
+            modeMenuEl.style.display = 'none';
+            customizePanelEl.classList.add('open');
+            refreshCustomizationUIFn(); drawPreviewFn();
+        });
+        customizeCloseBtn.addEventListener('click', () => {
+            customizePanelEl.classList.remove('open');
+            modeMenuEl.style.display = 'flex'; drawPreviewFn();
+        });
+
+        function createExplosion(pos, big = false) {
+            const n = big ? 10 : 5;
+            for (let i = 0; i < n; i++) {
+                const p = new THREE.Mesh(SHARED_SPHERE_GEO, Math.random() > 0.5 ? FIRE_MAT_ORANGE : FIRE_MAT_YELLOW);
+                p.position.copy(pos);
+                const s = 0.3 + Math.random() * 0.5;
+                p.scale.setScalar(s);
+                scene.add(p);
+                explosions.push({ mesh: p, velocity: _v1.set(
+                    (Math.random()-0.5)*10,
+                    Math.random()*8 + 2,
+                    (Math.random()-0.5)*10
+                ).clone(), life: 0.5+Math.random()*0.3, maxLife: 0.8, type: 'fire' });
+            }
+            for (let i = 0; i < (big ? 5 : 3); i++) {
+                const p = new THREE.Mesh(SHARED_SPHERE_GEO, SMOKE_MAT);
+                p.position.copy(pos);
+                const s = 0.5 + Math.random() * 0.7;
+                p.scale.setScalar(s);
+                scene.add(p);
+                explosions.push({ mesh: p, velocity: new THREE.Vector3(
+                    (Math.random()-0.5)*5,
+                    Math.random()*5 + 1,
+                    (Math.random()-0.5)*5
+                ), life: 1.0+Math.random()*0.5, maxLife: 1.5, type: 'smoke' });
+            }
+            if (activeFlashLights.length < 2) {
+                const l = new THREE.PointLight(0xff6600, big ? 6 : 3, big ? 25 : 15);
+                l.position.copy(pos);
+                scene.add(l);
+                flashes.push({ light: l, life: 0.25 });
+                activeFlashLights.push(l);
+            }
+        }
+
+        function damageBuilding(b, hitPos) {
+            if (b.destroyed) return;
+            b.health--;
+            if (b.health <= 0) destroyBuilding(b);
+            else {
+                const t = b.health / b.maxHealth;
+                const c = new THREE.Color(b.color); c.multiplyScalar(0.5 + t * 0.5);
+                b.group.children.forEach(p => { if (p.material && p.material.color) p.material.color.set(c); });
+            }
+        }
+
+        function settleDebris(flying) {
+            const pos = flying.mesh.position.clone();
+            const gy = getTerrainHeight(pos.x, pos.z);
+            pos.y = gy + 0.2;
+            scene.remove(flying.mesh);
+            const settled = new THREE.Mesh(SHARED_BOX_GEO, new THREE.MeshLambertMaterial({ color: flying.debrisColor }));
+            settled.scale.setScalar(flying.debrisSize);
+            settled.position.copy(pos);
+            settled.rotation.set((Math.random() - 0.5) * 0.4, Math.random() * Math.PI * 2, (Math.random() - 0.5) * 0.4);
+            scene.add(settled); persistentDebris.push(settled);
+        }
+
+        function createRuinFromBuilding(building) {
+            const ruinGroup = new THREE.Group();
+            const baseColor = new THREE.Color(building.color);
+            const w = building.width, h = building.height, d = building.depth;
+            const x = building.position.x, z = building.position.z;
+            const gy = getTerrainHeight(x, z);
+            const wallMat = new THREE.MeshLambertMaterial({ color: baseColor });
+            const base = new THREE.Mesh(new THREE.BoxGeometry(w * 0.9, 0.6, d * 0.9), wallMat);
+            base.position.set(0, 0.3, 0); ruinGroup.add(base);
+            for (let i = 0; i < 4; i++) {
+                const fw = w * (0.2 + Math.random() * 0.2);
+                const fh = h * (0.2 + Math.random() * 0.4);
+                const frag = new THREE.Mesh(new THREE.BoxGeometry(fw, fh, 0.6), wallMat);
+                frag.position.set((Math.random() - 0.5) * w * 0.7, fh/2 + 0.3, (Math.random() - 0.5) * d * 0.7);
+                frag.rotation.y = (Math.random() - 0.5) * 0.4;
+                ruinGroup.add(frag);
+            }
+            for (let i = 0; i < 6; i++) {
+                const size = 0.5 + Math.random() * 1.0;
+                const r = new THREE.Mesh(SHARED_BOX_GEO, wallMat);
+                r.scale.set(size, size * 0.4, size * 0.6);
+                r.position.set((Math.random() - 0.5) * w * 0.9, size * 0.2, (Math.random() - 0.5) * d * 0.9);
+                r.rotation.set((Math.random() - 0.5) * 0.5, Math.random() * Math.PI * 2, (Math.random() - 0.5) * 0.5);
+                ruinGroup.add(r);
+            }
+            ruinGroup.position.set(x, gy, z);
+            scene.add(ruinGroup); ruins.push(ruinGroup);
+        }
+
+        function destroyBuilding(building) {
+            if (building.destroyed) return;
+            building.destroyed = true;
+            const center = building.position.clone(); center.y += building.height * 0.5;
+            createExplosion(center, true);
+            for (let i = 0; i < FLYING_DEBRIS_COUNT; i++) {
+                const size = 0.5 + Math.random() * 1.5;
+                const d = new THREE.Mesh(SHARED_BOX_GEO, new THREE.MeshLambertMaterial({ color: building.color }));
+                d.scale.setScalar(size);
+                d.position.copy(center);
+                d.position.x += (Math.random() - 0.5) * building.width;
+                d.position.z += (Math.random() - 0.5) * building.depth;
+                scene.add(d);
+                explosions.push({
+                    mesh: d,
+                    velocity: new THREE.Vector3((Math.random()-0.5)*12, Math.random()*10+2, (Math.random()-0.5)*12),
+                    life: 1.2 + Math.random() * 0.6, maxLife: 1.8, type: 'debris',
+                    spin: new THREE.Vector3((Math.random()-0.5)*4, (Math.random()-0.5)*4, (Math.random()-0.5)*4),
+                    settlesOnGround: true, debrisColor: building.color, debrisSize: size
+                });
+            }
+            for (let i = 0; i < 3; i++) {
+                const dust = new THREE.Mesh(SHARED_SPHERE_GEO, SMOKE_MAT);
+                dust.scale.setScalar(1 + Math.random() * 1.5);
+                dust.position.copy(center);
+                dust.position.x += (Math.random() - 0.5) * building.width;
+                dust.position.z += (Math.random() - 0.5) * building.depth;
+                scene.add(dust);
+                explosions.push({ mesh: dust, velocity: new THREE.Vector3((Math.random()-0.5)*6, Math.random()*4+2, (Math.random()-0.5)*6), life: 1.5+Math.random(), maxLife: 2.0, type: 'smoke' });
+            }
+            createRuinFromBuilding(building);
+            scene.remove(building.group);
+            const R = Math.max(building.width, building.depth) * 0.7;
+            for (const t of tanks) {
+                if (t.destroyed) continue;
+                if (Math.hypot(t.group.position.x - building.position.x, t.group.position.z - building.position.z) <= R) { triggerRevenge(t); damageEnemyTank(t, 999); }
+            }
+            for (const a of allyTanks) {
+                if (a.destroyed) continue;
+                if (Math.hypot(a.group.position.x - building.position.x, a.group.position.z - building.position.z) <= R) damageAlly(a, 100);
+            }
+            if (Math.hypot(playerTank.position.x - building.position.x, playerTank.position.z - building.position.z) <= R && !playerTank.destroyed && !isFlying) damagePlayer(25);
+            buildingsLeftEl.textContent = buildings.filter(b => !b.destroyed).length;
+        }
+
+        function triggerRevenge(hitT) {
+            if (hitT.destroyed) return;
+            if (GAME_MODE === 'desant' && hitT.sector >= 0) {
+                const hitSector = hitT.sector;
+                const hitPos = hitT.group.position;
+                const candidates = tanks
+                    .filter(t => !t.destroyed && t !== hitT && t.sector === hitSector)
+                    .map(t => ({ tank: t, dist: t.group.position.distanceTo(hitPos) }))
+                    .sort((a, b) => a.dist - b.dist)
+                    .slice(0, 3);
+                for (const c of candidates) {
+                    c.tank.aggressive = true;
+                    c.tank.aggroReason = 'revenge';
+                    c.tank.aggroTimer = 10.0;
+                    c.tank.revenge = true;
+                    c.tank.fireCooldown = Math.min(c.tank.fireCooldown, 1.0 + Math.random());
+                }
+                return;
+            }
+            const hp = hitT.group.position;
+            const cand = tanks.filter(t => !t.destroyed && t !== hitT).map(t => ({ tank: t, dist: t.group.position.distanceTo(hp) }))
+                .filter(c => c.dist <= REVENGE_RADIUS).sort((a,b) => a.dist - b.dist).slice(0, REVENGE_COUNT);
+            for (const c of cand) {
+                c.tank.aggressive = true; c.tank.aggroReason = 'revenge';
+                c.tank.aggroTimer = 10.0; c.tank.fireCooldown = Math.min(c.tank.fireCooldown, 1.0 + Math.random());
+            }
+        }
+
+        function explodeBarrel(bar) {
+            if (bar.destroyed) return;
+            bar.destroyed = true;
+            const p = bar.position.clone(); p.y += BARREL_HEIGHT*0.5;
+            createExplosion(p, true); scene.remove(bar.group);
+            const hp = bar.position.clone();
+            for (const t of tanks) { if (t.destroyed) continue; if (Math.hypot(t.group.position.x - hp.x, t.group.position.z - hp.z) <= BARREL_DAMAGE_RADIUS) { triggerRevenge(t); damageEnemyTank(t, 999); } }
+            for (const a of allyTanks) { if (a.destroyed) continue; if (Math.hypot(a.group.position.x - hp.x, a.group.position.z - hp.z) <= BARREL_DAMAGE_RADIUS) damageAlly(a, 100); }
+            if (Math.hypot(playerTank.position.x - hp.x, playerTank.position.z - hp.z) <= BARREL_DAMAGE_RADIUS && !playerTank.destroyed && !isFlying) damagePlayer(BARREL_DAMAGE);
+            barrelsLeftEl.textContent = barrels.filter(b => !b.destroyed).length;
+        }
+
+        function addUpgradePoints(n) { playerTank.upgradePoints += n; updateUpgradeUI(); }
+        function updateUpgradeUI() {
+            upgradePointsEl.textContent = playerTank.upgradePoints;
+            armorLevelDisplayEl.textContent = 'УР. ' + playerTank.armorLevel;
+            if (playerTank.rocketsUnlocked) {
+                rocketsRowEl.style.display = 'flex'; unlockHintEl.style.display = 'block';
+                unlockHintEl.textContent = `[Q] — купить +2 ракеты (${ROCKET_UNLOCK_COST} очков) · всего: ${playerTank.rocketsCount}/${MAX_ROCKETS}`;
+                updateRocketsUI();
+            } else {
+                rocketsRowEl.style.display = 'none'; unlockHintEl.style.display = 'block';
+                unlockHintEl.textContent = `[Q] — разблокировать ракеты (${ROCKET_UNLOCK_COST} очков)`;
+            }
+        }
+        function updateRocketsUI() {
+            rocketsContainerEl.innerHTML = '';
+            for (let i = 0; i < MAX_ROCKETS; i++) {
+                const d = document.createElement('span');
+                d.className = 'rocket' + (i < playerTank.rocketsCount ? ' loaded' : '');
+                d.textContent = i < playerTank.rocketsCount ? '🚀' : '—';
+                rocketsContainerEl.appendChild(d);
+            }
+        }
+        function tryUpgradeArmor() {
+            if (playerTank.destroyed || playerTank.armorLevel >= MAX_ARMOR_LEVEL || playerTank.upgradePoints < UPGRADE_COST) return;
+            playerTank.upgradePoints -= UPGRADE_COST; playerTank.armorLevel++;
+            playerTank.maxHealth = playerTank.baseHealth + playerTank.armorLevel * ARMOR_PER_LEVEL;
+            playerTank.health = Math.min(playerTank.maxHealth, playerTank.health + ARMOR_PER_LEVEL);
+            updateUpgradeUI(); healthFillEl.style.width = Math.max(0, (playerTank.health/playerTank.maxHealth)*100) + '%';
+        }
+        function tryBuyRockets() {
+            if (playerTank.destroyed || playerTank.upgradePoints < ROCKET_UNLOCK_COST) return;
+            if (playerTank.rocketsUnlocked && playerTank.rocketsCount >= MAX_ROCKETS) return;
+            playerTank.upgradePoints -= ROCKET_UNLOCK_COST;
+            if (!playerTank.rocketsUnlocked) { playerTank.rocketsUnlocked = true; playerTank.rocketsCount = ROCKET_AMMO_PER_PURCHASE; }
+            else playerTank.rocketsCount = Math.min(MAX_ROCKETS, playerTank.rocketsCount + ROCKET_AMMO_PER_PURCHASE);
+            for (let i = 0; i < rocketVisuals.length; i++) if (rocketVisuals[i]) rocketVisuals[i].visible = i < playerTank.rocketsCount;
+            updateUpgradeUI();
+        }
+        function getPlayerMoveSpeed() { const p = 1 - playerTank.armorLevel * SPEED_PENALTY_PER_LEVEL; return 28 * Math.max(0.4, p); }
+
+        function damageEnemyTank(t, amt) {
+            if (t.destroyed) return;
+            t.hp -= amt;
+            if (t.hp <= 0) { t.hp = 0; destroyEnemyTank(t); }
+            else { t.bodyMat.color.setHex(0xffaa00); setTimeout(() => { if (!t.destroyed) t.bodyMat.color.setHex(t.originalColor); }, 100); }
+        }
+        function destroyEnemyTank(t) {
+            if (t.destroyed) return;
+            t.destroyed = true; t.aggressive = false; kills++; killsEl.textContent = kills; addUpgradePoints(1);
+            t.bodyMat.color.setHex(0x1a1a1a); t.turretMat.color.setHex(0x1a1a1a); t.fireGroup.visible = true;
+            const p = t.group.position; createExplosion(new THREE.Vector3(p.x, p.y+2, p.z), true);
+            if (kills >= tanks.length) winScreenEl.classList.add('active');
+        }
+        function damageAlly(a, amt) {
+            if (a.destroyed) return;
+            a.hp -= amt;
+            if (a.hp <= 0) {
+                a.hp = 0; a.destroyed = true;
+                a.bodyMat.color.setHex(0x1a1a1a); a.turretMat.color.setHex(0x1a1a1a); a.fireGroup.visible = true;
+                const p = a.group.position; createExplosion(new THREE.Vector3(p.x, p.y+2, p.z), true);
+                alliesLeftEl.textContent = allyTanks.filter(x => !x.destroyed).length;
+            } else {
+                a.bodyMat.color.setHex(0x66aaff);
+                setTimeout(() => { if (!a.destroyed) a.bodyMat.color.setHex(a.originalColor); }, 80);
+            }
+        }
+        function damagePlayer(amt) {
+            if (playerTank.destroyed) return;
+            playerTank.health -= amt;
+            if (playerTank.health <= 0) {
+                playerTank.health = 0; playerTank.destroyed = true;
+                winScreenEl.querySelector('h1').textContent = 'ПОРАЖЕНИЕ';
+                winScreenEl.querySelector('h1').style.color = '#ff3300';
+                winScreenEl.querySelector('p').textContent = 'ТАНК УНИЧТОЖЕН';
+                winScreenEl.classList.add('active');
+            }
+        }
+
+        const keys = {};
+        const keyMap = { 'KeyW':'w','KeyA':'a','KeyS':'s','KeyD':'d','ArrowLeft':'left','ArrowRight':'right','ArrowUp':'up','ArrowDown':'down','KeyR':'reset','KeyE':'upgrade','KeyF':'rocket','KeyQ':'unlockRocket' };
+        addEventListener('keydown', (e) => {
+            const k = keyMap[e.code];
+            if (k) {
+                if (k === 'reset') {
+                    if (modeMenuEl.style.display === 'none' || modeMenuEl.style.display === '') {
+                        winScreenEl.classList.remove('active'); clearWorldFn();
+                        modeMenuEl.style.display = 'flex'; allyStrategyBlockEl.style.display = 'none';
+                    }
+                    keys.reset = true; e.preventDefault(); return;
+                }
+                if (k === 'upgrade' && !keys.upgrade) tryUpgradeArmor();
+                if (k === 'rocket' && !keys.rocket) fireRocket();
+                if (k === 'unlockRocket' && !keys.unlockRocket) tryBuyRockets();
+                keys[k] = true; e.preventDefault();
+            }
+        });
+        addEventListener('keyup', (e) => { const k = keyMap[e.code]; if (k) { keys[k] = false; e.preventDefault(); } });
+        addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+
+        let isAiming = false;
+        const crosshairEl = document.getElementById('crosshair');
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            if (e.button === 0) {
+                if (isFlying && isBombAiming) {
+                    startBombSalvo(bombAimPoint);
+                } else {
+                    fireShell(); shotsFired++;
+                }
+            }
+            if (e.button === 2) {
+                if (isFlying) {
+                    isBombAiming = true;
+                    if (bombAimMarker) bombAimMarker.visible = true;
+                    bombHintEl.classList.add('active');
+                    crosshairEl.classList.add('bomb');
+                } else {
+                    isAiming = true; crosshairEl.classList.add('zoom');
+                }
+                e.preventDefault();
+            }
+        });
+        renderer.domElement.addEventListener('mouseup', (e) => {
+            if (e.button === 2) {
+                if (isFlying) {
+                    isBombAiming = false;
+                    if (bombAimMarker) bombAimMarker.visible = false;
+                    bombHintEl.classList.remove('active');
+                    crosshairEl.classList.remove('bomb');
+                } else {
+                    isAiming = false; crosshairEl.classList.remove('zoom');
+                }
+                e.preventDefault();
+            }
+        });
+        renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        const helpToggle = document.getElementById('helpToggle');
+        const helpPanel = document.getElementById('helpPanel');
+        const helpClose = document.getElementById('helpClose');
+        helpToggle.addEventListener('click', () => { const o = helpPanel.classList.toggle('open'); helpToggle.textContent = o ? '📖 ИНСТРУКЦИЯ ▼' : '📖 ИНСТРУКЦИЯ ▲'; });
+        helpClose.addEventListener('click', () => { helpPanel.classList.remove('open'); helpToggle.textContent = '📖 ИНСТРУКЦИЯ ▲'; });
+        const fullHelpToggle = document.getElementById('fullHelpToggle');
+        const fullHelpPanel = document.getElementById('fullHelpPanel');
+        fullHelpToggle.addEventListener('click', () => { const o = fullHelpPanel.classList.toggle('open'); fullHelpToggle.textContent = o ? '📋 ВСЕ ПАРАМЕТРЫ ▼' : '📋 ВСЕ ПАРАМЕТРЫ ▲'; });
+
+        const clock = new THREE.Clock();
+        let fpsFrames = 0, fpsTime = 0;
+
+        function pointInBuilding(px, pz, b) {
+            if (b.destroyed) return false;
+            return Math.abs(px - b.position.x) < b.halfW + 0.8 && Math.abs(pz - b.position.z) < b.halfD + 0.8;
+        }
+
+        function fireShell() {
+            if (playerTank.reloadTime > 0 || playerTank.destroyed) return;
+            playerTank.reloadTime = playerTank.reloadMax;
+            const tip = new THREE.Vector3(); playerMuzzle.getWorldPosition(tip);
+            const dir = new THREE.Vector3(0, 0, 1).applyEuler(playerGroup.rotation).normalize();
+            const s = new THREE.Mesh(SHARED_SPHERE_GEO, new THREE.MeshBasicMaterial({ color: 0xffaa00 }));
+            s.scale.setScalar(0.35);
+            s.position.copy(tip); scene.add(s);
+            shells.push({ mesh: s, velocity: dir.clone().multiplyScalar(180), life: 3.0, fromEnemy: false });
+        }
+        function fireEnemyShell(t) {
+            const s = new THREE.Mesh(SHARED_SPHERE_GEO, new THREE.MeshBasicMaterial({ color: 0xff4400 }));
+            s.scale.setScalar(0.35);
+            s.position.copy(t.muzzleWorldPos); scene.add(s);
+            const dir = t.muzzleWorldDir.clone().normalize();
+            shells.push({ mesh: s, velocity: dir.multiplyScalar(140), life: 3.0, fromEnemy: true });
+        }
+        function fireAllyShell(a) {
+            const s = new THREE.Mesh(SHARED_SPHERE_GEO, new THREE.MeshBasicMaterial({ color: 0x44aaff }));
+            s.scale.setScalar(0.35);
+            s.position.copy(a.muzzleWorldPos); scene.add(s);
+            const dir = a.muzzleWorldDir.clone().normalize();
+            shells.push({ mesh: s, velocity: dir.multiplyScalar(150), life: 3.0, fromAlly: true });
+        }
+        function fireRocket() {
+            if (playerTank.destroyed || !playerTank.rocketsUnlocked || playerTank.rocketsCount <= 0 || playerTank.rocketReloadTime > 0) return;
+            playerTank.rocketsCount--; playerTank.rocketReloadTime = playerTank.rocketReloadMax; updateRocketsUI();
+
+            if (playerTank.rocketsCount === 0) rocketVisuals.forEach(v => v.visible = false);
+            else if (playerTank.rocketsCount === 1) { if (rocketVisuals[1]) rocketVisuals[1].visible = false; }
+
+            const st = new THREE.Vector3(); playerMuzzle.getWorldPosition(st);
+            const dir = new THREE.Vector3(0, 0, 1).applyEuler(playerGroup.rotation).normalize();
+
+            const g = new THREE.Group();
+            const b = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 2.0, 6), new THREE.MeshLambertMaterial({ color: 0xdddddd }));
+            b.rotation.x = Math.PI/2; g.add(b);
+            const fl = new THREE.Mesh(SHARED_SPHERE_GEO, FIRE_MAT_YELLOW);
+            fl.position.z = -1.3; fl.scale.setScalar(0.4); g.add(fl);
+            g.position.copy(st); g.rotation.copy(playerGroup.rotation); scene.add(g);
+            rockets.push({ mesh: g, velocity: dir.clone().multiplyScalar(90), life: 6.0, smokeTimer: 0 });
+            pTurret.position.z = 0.6; setTimeout(() => { pTurret.position.z = 0.9; }, 100);
+        }
+
+        // ==== Очередь бомбовых ракет (залп) ====
+        function startBombSalvo(target) {
+            if (playerTank.destroyed || !playerTank.rocketsUnlocked || playerTank.rocketsCount <= 0) return;
+            bombSalvoQueue = [];
+            const n = playerTank.rocketsCount;
+            for (let i = 0; i < n; i++) {
+                bombSalvoQueue.push({ target: target.clone(), timer: i * BOMB_SALVO_INTERVAL, fired: false });
+            }
+        }
+
+        function updateBombSalvo(dt) {
+            if (bombSalvoQueue.length === 0) return;
+            for (const item of bombSalvoQueue) {
+                if (item.fired) continue;
+                item.timer -= dt;
+                if (item.timer <= 0) {
+                    item.fired = true;
+                    spawnBombRocket(item.target);
+                }
+            }
+            bombSalvoQueue = bombSalvoQueue.filter(it => !it.fired);
+        }
+
+        function spawnBombRocket(target) {
+            if (playerTank.rocketsCount <= 0 || playerTank.destroyed) return;
+            playerTank.rocketsCount--;
+            updateRocketsUI();
+
+            const side = (playerTank.rocketsCount % 2 === 0) ? -1 : 1;
+            const localStart = new THREE.Vector3(side * 2.2, 3.2, 0.5);
+            localStart.applyEuler(playerGroup.rotation);
+            const st = playerTank.position.clone().add(localStart);
+
+            const dir = target.clone().sub(st).normalize();
+
+            const g = new THREE.Group();
+            const b = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 2.0, 6), new THREE.MeshLambertMaterial({ color: 0xdddddd }));
+            b.rotation.x = Math.PI/2; g.add(b);
+            const fl = new THREE.Mesh(SHARED_SPHERE_GEO, FIRE_MAT_YELLOW);
+            fl.position.z = -1.3; fl.scale.setScalar(0.4); g.add(fl);
+            g.position.copy(st);
+            g.lookAt(target);
+            g.rotateX(-Math.PI / 2);
+            scene.add(g);
+
+            rockets.push({
+                mesh: g,
+                velocity: dir.clone().multiplyScalar(140),
+                life: 6.0,
+                smokeTimer: 0,
+                gravity: 30
+            });
+
+            if (playerTank.rocketsCount === 0) rocketVisuals.forEach(v => v.visible = false);
+            else if (playerTank.rocketsCount === 1) { if (rocketVisuals[1]) rocketVisuals[1].visible = false; }
+        }
+
+        function updateFlight(dt) {
+            let yawInput = 0;
+            if (keys.left) yawInput += 1;
+            if (keys.right) yawInput -= 1;
+            playerTank.rotation += yawInput * 1.2 * dt;
+
+            let rollInput = 0;
+            if (keys.a) rollInput += 1;
+            if (keys.d) rollInput -= 1;
+            if (keys.left) rollInput += 1;
+            if (keys.right) rollInput -= 1;
+            playerRoll += (rollInput * 0.5 - playerRoll) * Math.min(1, 4 * dt);
+
+            let pitchTarget = 0;
+            if (keys.up) pitchTarget = -0.4;
+            if (keys.down) pitchTarget = 0.4;
+            if (isFlying) playerPitch += (pitchTarget - playerPitch) * Math.min(1, 3 * dt);
+
+            const absPitch = Math.abs(playerPitch);
+            if (absPitch > DESANT_MAX_LANDING_ANGLE && playerTank.position.y < 15) altitudeWarningEl.classList.add('active');
+            else altitudeWarningEl.classList.remove('active');
+
+            let thrust = 0;
+            if (keys.w) thrust = 1;
+            if (keys.s) thrust = -0.4;
+            const targetSpeed = DESANT_FLIGHT_SPEED * (thrust !== 0 ? (thrust > 0 ? 1.2 : 0.6) : 1.0);
+            flightSpeed += (targetSpeed - flightSpeed) * Math.min(1, 2 * dt);
+
+            const fwd = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0,1,0), playerTank.rotation);
+            const vertSpeed = Math.sin(playerPitch) * flightSpeed;
+            playerTank.position.addScaledVector(fwd, Math.cos(playerPitch) * flightSpeed * dt);
+            playerTank.position.y += -vertSpeed * dt;
+            if (playerTank.position.y < 1) playerTank.position.y = 1;
+
+            playerTank.position.x = Math.max(-MAP_LIMIT, Math.min(MAP_LIMIT, playerTank.position.x));
+            playerTank.position.z = Math.max(-MAP_LIMIT, Math.min(MAP_LIMIT, playerTank.position.z));
+
+            playerGroup.position.copy(playerTank.position);
+            playerGroup.rotation.order = 'YXZ';
+            playerGroup.rotation.y = playerTank.rotation;
+            playerGroup.rotation.x = playerPitch;
+            playerGroup.rotation.z = playerRoll;
+
+            // Союзники по сторонам от игрока
+            for (let idx = 0; idx < allyTanks.length; idx++) {
+                const a = allyTanks[idx];
+                if (a.destroyed) continue;
+                if (!a.isFlyingWithPlayer) continue;
+
+                a.flightPhase += dt;
+
+                const sideSign = (idx % 2 === 0) ? -1 : 1;
+                const ring = Math.floor(idx / 2);
+                const sideDist = 12 + ring * 6;
+                const alongOffset = ring * 2;
+
+                const local = new THREE.Vector3(
+                    sideSign * sideDist + Math.sin(a.flightPhase * 0.6) * 0.8,
+                    0,
+                    alongOffset + Math.cos(a.flightPhase * 0.5) * 0.8
+                );
+                local.applyAxisAngle(new THREE.Vector3(0, 1, 0), playerTank.rotation);
+
+                a.group.position.set(
+                    playerTank.position.x + local.x,
+                    playerTank.position.y,
+                    playerTank.position.z + local.z
+                );
+                a.group.rotation.order = 'YXZ';
+                a.group.rotation.y = playerTank.rotation;
+                a.group.rotation.x = playerPitch;
+                a.group.rotation.z = playerRoll;
+            }
+
+            // Бомбовый прицел: маркер + камера
+            if (isBombAiming) {
+                const ax = playerTank.position.x + fwd.x * BOMB_AIM_DISTANCE;
+                const az = playerTank.position.z + fwd.z * BOMB_AIM_DISTANCE;
+                const ay = getTerrainHeight(ax, az);
+                bombAimPoint.set(ax, ay + 0.1, az);
+                if (bombAimMarker) bombAimMarker.position.copy(bombAimPoint);
+
+                const camPos = playerTank.position.clone().add(new THREE.Vector3(0, 22, 0));
+                camera.position.lerp(camPos, 1 - Math.pow(0.01, dt));
+                camera.lookAt(bombAimPoint);
+            } else {
+                const backOffset = new THREE.Vector3(0, 6, -18).applyEuler(playerGroup.rotation);
+                camera.position.lerp(playerTank.position.clone().add(backOffset), 1 - Math.pow(0.005, dt));
+                const lookAt = playerTank.position.clone().add(fwd.clone().multiplyScalar(30));
+                camera.lookAt(lookAt);
+            }
+
+            const groundY = getTerrainHeight(playerTank.position.x, playerTank.position.z);
+            if (playerTank.position.y <= groundY + 2.0) {
+                isFlying = false;
+                isBombAiming = false;
+                bombSalvoQueue = [];
+                if (bombAimMarker) bombAimMarker.visible = false;
+                bombHintEl.classList.remove('active');
+                crosshairEl.classList.remove('bomb');
+                altitudeWarningEl.classList.remove('active');
+                flightHudEl.classList.remove('active');
+                const landingAngle = Math.abs(playerPitch);
+                if (landingAngle > DESANT_MAX_LANDING_ANGLE) {
+                    playerTank.position.y = groundY + 0.5;
+                    playerGroup.position.copy(playerTank.position);
+                    playerGroup.rotation.x = 0; playerGroup.rotation.z = 0;
+                    playerGroup.rotation.y = playerTank.rotation;
+                    playerTank.destroyed = true;
+                    winScreenEl.querySelector('h1').textContent = 'КРУШЕНИЕ';
+                    winScreenEl.querySelector('h1').style.color = '#ff3300';
+                    winScreenEl.querySelector('p').textContent = 'УГОЛ ПОСАДКИ БОЛЕЕ 45° — ЭКИПАЖ ПОГИБ';
+                    winScreenEl.classList.add('active');
+                    createExplosion(playerTank.position.clone(), true);
+                    removePlayerWings();
+                } else {
+                    playerTank.position.y = groundY;
+                    playerGroup.position.copy(playerTank.position);
+                    playerGroup.rotation.order = 'YXZ';
+                    playerGroup.rotation.x = 0; playerGroup.rotation.z = 0;
+                    playerGroup.rotation.y = playerTank.rotation;
+                    playerPitch = 0; playerRoll = 0;
+                    removePlayerWings();
+                    playerTank.rocketsCount = 0;
+                    rocketVisuals.forEach(v => v.visible = false);
+                    const groundPlaces = [[6, 4], [-6, 4]];
+                    let idx = 0;
+                    for (const a of allyTanks) {
+                        if (a.destroyed) continue;
+                        if (a.wingGroup) { a.group.remove(a.wingGroup); a.wingGroup = null; }
+                        if (a.isFlyingWithPlayer) {
+                            const [ox, oz] = groundPlaces[idx % groundPlaces.length];
+                            idx++;
+                            a.group.position.set(playerTank.position.x + ox, getTerrainHeight(playerTank.position.x + ox, playerTank.position.z + oz), playerTank.position.z + oz);
+                            a.group.rotation.order = 'YXZ';
+                            a.group.rotation.x = 0; a.group.rotation.z = 0;
+                            a.group.rotation.y = 0;
+                            a.isFlyingWithPlayer = false;
+                        }
+                    }
+                }
+            }
+
+            healthFillEl.style.width = Math.max(0, (playerTank.health/playerTank.maxHealth)*100) + '%';
+        }
+
+        function updatePlayer(dt) {
+            if (playerTank.destroyed) return;
+            if (isFlying) { updateFlight(dt); return; }
+
+            let ti = 0; if (keys.left || keys.a) ti += 1; if (keys.right || keys.d) ti -= 1;
+            playerTank.rotation += ti * 2.2 * dt;
+            let mi = 0; if (keys.w) mi += 1; if (keys.s) mi -= 1;
+            const fwd = _v1.set(0, 0, 1).applyAxisAngle(new THREE.Vector3(0,1,0), playerTank.rotation);
+            const ms = getPlayerMoveSpeed();
+            playerTank.velocity.lerp(fwd.clone().multiplyScalar(mi * ms), 1 - Math.pow(0.01, dt));
+            const ox = playerTank.position.x, oz = playerTank.position.z;
+            playerTank.position.addScaledVector(playerTank.velocity, dt);
+            for (const b of buildings) {
+                if (pointInBuilding(playerTank.position.x, playerTank.position.z, b)) {
+                    playerTank.position.x = ox; playerTank.position.z = oz;
+                    playerTank.velocity.multiplyScalar(0.2); break;
+                }
+            }
+            playerTank.position.x = Math.max(-MAP_LIMIT, Math.min(MAP_LIMIT, playerTank.position.x));
+            playerTank.position.z = Math.max(-MAP_LIMIT, Math.min(MAP_LIMIT, playerTank.position.z));
+            playerTank.position.y = getTerrainHeight(playerTank.position.x, playerTank.position.z);
+            playerGroup.position.copy(playerTank.position); playerGroup.rotation.y = playerTank.rotation;
+            const ah = _v2.set(0, 0, 1).applyAxisAngle(new THREE.Vector3(0,1,0), playerTank.rotation);
+            const hA = getTerrainHeight(playerTank.position.x + ah.x*3, playerTank.position.z + ah.z*3);
+            const hB = getTerrainHeight(playerTank.position.x - ah.x*3, playerTank.position.z - ah.z*3);
+            playerGroup.rotation.x = -Math.atan2(hA - hB, 6) * 0.6;
+            const bo = isAiming ? _v3.set(0, 6, -10) : _v3.set(0, 12, -22);
+            bo.applyAxisAngle(new THREE.Vector3(0,1,0), playerTank.rotation);
+            camera.position.lerp(playerTank.position.clone().add(bo), 1 - Math.pow(isAiming ? 0.02 : 0.005, dt));
+            const ld = _v1.set(0, 0, 1).applyAxisAngle(new THREE.Vector3(0,1,0), playerTank.rotation);
+            const la = playerTank.position.clone().add(ld.clone().multiplyScalar(isAiming ? 120 : 80));
+            la.y = playerTank.position.y + 3.0; camera.lookAt(la);
+            if (playerTank.reloadTime > 0) { playerTank.reloadTime -= dt; reloadEl.classList.add('active'); if (playerTank.reloadTime <= 0) { playerTank.reloadTime = 0; reloadEl.classList.remove('active'); } }
+            if (playerTank.rocketReloadTime > 0) { playerTank.rocketReloadTime -= dt; if (playerTank.rocketReloadTime < 0) playerTank.rocketReloadTime = 0; }
+            healthFillEl.style.width = Math.max(0, (playerTank.health/playerTank.maxHealth)*100) + '%';
+            if (shotsFired > 0) accuracyEl.textContent = Math.round((shotsHit/shotsFired)*100);
+        }
+
+        function updateShells(dt) {
+            for (let i = shells.length - 1; i >= 0; i--) {
+                const s = shells[i]; s.life -= dt;
+                if (s.life <= 0) { scene.remove(s.mesh); shells.splice(i, 1); continue; }
+                s.mesh.position.addScaledVector(s.velocity, dt);
+                let hit = false;
+                for (const b of buildings) {
+                    if (b.destroyed) continue;
+                    const sx = s.mesh.position.x, sz = s.mesh.position.z, sy = s.mesh.position.y;
+                    if (Math.abs(sx - b.position.x) < b.halfW + 0.5 && Math.abs(sz - b.position.z) < b.halfD + 0.5 && sy < b.position.y + b.height + 0.5) {
+                        damageBuilding(b, s.mesh.position.clone()); hit = true; break;
+                    }
+                }
+                if (!hit && s.fromEnemy) {
+                    const dx = s.mesh.position.x - playerTank.position.x, dz = s.mesh.position.z - playerTank.position.z;
+                    const dy = s.mesh.position.y - (playerTank.position.y + 1.8);
+                    if (!isFlying && dx*dx + dz*dz < 25 && Math.abs(dy) < 3.5) { damagePlayer(15); createExplosion(s.mesh.position.clone()); hit = true; }
+                    if (!hit) {
+                        for (const a of allyTanks) {
+                            if (a.destroyed) continue;
+                            const ap = a.group.position;
+                            const adx = s.mesh.position.x - ap.x, adz = s.mesh.position.z - ap.z;
+                            const ady = s.mesh.position.y - (ap.y + 1.8);
+                            if (adx*adx + adz*adz < 25 && Math.abs(ady) < 3.5) { damageAlly(a, 15); createExplosion(s.mesh.position.clone()); hit = true; break; }
+                        }
+                    }
+                } else if (!hit && s.fromAlly) {
+                    for (const t of tanks) {
+                        if (t.destroyed) continue;
+                        const tp = t.group.position;
+                        const dx = s.mesh.position.x - tp.x, dz = s.mesh.position.z - tp.z;
+                        const dy = s.mesh.position.y - (tp.y + 1.8);
+                        if (dx*dx + dz*dz < 25 && Math.abs(dy) < 3.5) { triggerRevenge(t); damageEnemyTank(t, 1); createExplosion(s.mesh.position.clone()); hit = true; break; }
+                    }
+                } else if (!hit) {
+                    for (const t of tanks) {
+                        if (t.destroyed) continue;
+                        const tp = t.group.position;
+                        const dx = s.mesh.position.x - tp.x, dz = s.mesh.position.z - tp.z;
+                        const dy = s.mesh.position.y - (tp.y + 1.8);
+                        if (dx*dx + dz*dz < 25 && Math.abs(dy) < 3.5) { triggerRevenge(t); damageEnemyTank(t, 1); createExplosion(s.mesh.position.clone()); hit = true; shotsHit++; break; }
+                    }
+                    if (!hit) {
+                        for (const b of barrels) {
+                            if (b.destroyed) continue;
+                            const bp = b.position;
+                            const dx = s.mesh.position.x - bp.x, dz = s.mesh.position.z - bp.z;
+                            const dy = s.mesh.position.y - (bp.y + BARREL_HEIGHT*0.5);
+                            if (dx*dx + dz*dz < (BARREL_RADIUS+0.6)*(BARREL_RADIUS+0.6) && Math.abs(dy) < BARREL_HEIGHT*0.7) { explodeBarrel(b); hit = true; shotsHit++; break; }
+                        }
+                    }
+                }
+                const gy = getTerrainHeight(s.mesh.position.x, s.mesh.position.z);
+                if (!hit && s.mesh.position.y < gy + 0.3) { createExplosion(s.mesh.position.clone()); hit = true; }
+                if (Math.abs(s.mesh.position.x) > MAP_SIZE*0.6 || Math.abs(s.mesh.position.z) > MAP_SIZE*0.6) hit = true;
+                if (hit) { scene.remove(s.mesh); shells.splice(i, 1); }
+            }
+        }
+
+        function updateRockets(dt) {
+            for (let i = rockets.length - 1; i >= 0; i--) {
+                const r = rockets[i]; r.life -= dt;
+                if (r.life <= 0) { scene.remove(r.mesh); rockets.splice(i, 1); continue; }
+                if (r.gravity) r.velocity.y -= r.gravity * dt;
+                r.mesh.position.addScaledVector(r.velocity, dt);
+                r.smokeTimer += dt;
+                if (r.smokeTimer > 0.05) {
+                    r.smokeTimer = 0;
+                    const sm = new THREE.Mesh(SHARED_SPHERE_GEO, SMOKE_MAT);
+                    sm.scale.setScalar(0.4);
+                    sm.position.copy(r.mesh.position); scene.add(sm);
+                    explosions.push({ mesh: sm, velocity: new THREE.Vector3((Math.random()-0.5)*2, Math.random()*2+0.5, (Math.random()-0.5)*2), life: 0.8+Math.random()*0.4, maxLife: 1.2, type: 'smoke' });
+                }
+                let hit = false;
+                for (const b of buildings) {
+                    if (b.destroyed) continue;
+                    const sx = r.mesh.position.x, sz = r.mesh.position.z, sy = r.mesh.position.y;
+                    if (Math.abs(sx - b.position.x) < b.halfW + 1.0 && Math.abs(sz - b.position.z) < b.halfD + 1.0 && sy < b.position.y + b.height + 1.5) {
+                        b.health = 1; damageBuilding(b, r.mesh.position.clone()); hit = true; break;
+                    }
+                }
+                if (!hit) {
+                    for (const t of tanks) {
+                        if (t.destroyed) continue;
+                        if (Math.hypot(t.group.position.x - r.mesh.position.x, t.group.position.z - r.mesh.position.z) <= 11) { triggerRevenge(t); damageEnemyTank(t, 999); hit = true; }
+                    }
+                }
+                if (!hit) {
+                    for (const b of barrels) {
+                        if (b.destroyed) continue;
+                        if (Math.hypot(b.position.x - r.mesh.position.x, b.position.z - r.mesh.position.z) <= 11) { explodeBarrel(b); hit = true; }
+                    }
+                }
+                const gy = getTerrainHeight(r.mesh.position.x, r.mesh.position.z);
+                if (!hit && r.mesh.position.y < gy + 0.3) { createExplosion(r.mesh.position.clone()); hit = true; }
+                if (Math.abs(r.mesh.position.x) > MAP_SIZE*0.6 || Math.abs(r.mesh.position.z) > MAP_SIZE*0.6) { createExplosion(r.mesh.position.clone()); hit = true; }
+                if (hit) { createExplosion(r.mesh.position.clone(), true); scene.remove(r.mesh); rockets.splice(i, 1); }
+            }
+        }
+
+        function updateExplosions(dt) {
+            for (let i = explosions.length - 1; i >= 0; i--) {
+                const e = explosions[i]; e.life -= dt;
+                if (e.life <= 0) {
+                    if (e.type === 'debris' && e.settlesOnGround) { settleDebris(e); }
+                    else { scene.remove(e.mesh); }
+                    explosions.splice(i, 1); continue;
+                }
+                if (e.type === 'debris') {
+                    e.velocity.y -= DEBRIS_GRAVITY * dt;
+                    e.mesh.position.addScaledVector(e.velocity, dt);
+                    if (e.spin) { e.mesh.rotation.x += e.spin.x*dt; e.mesh.rotation.y += e.spin.y*dt; e.mesh.rotation.z += e.spin.z*dt; }
+                    const gy = getTerrainHeight(e.mesh.position.x, e.mesh.position.z);
+                    if (e.mesh.position.y < gy + 0.2) { e.mesh.position.y = gy + 0.2; e.velocity.y = 0; e.velocity.x *= 0.5; e.velocity.z *= 0.5; }
+                } else {
+                    e.velocity.y -= (e.type === 'smoke' ? -1 : 10) * dt;
+                    e.mesh.position.addScaledVector(e.velocity, dt); e.velocity.multiplyScalar(0.97);
+                }
+                const t = e.life / e.maxLife;
+                if (e.mesh.material) e.mesh.material.opacity = t;
+                if (e.type !== 'debris') e.mesh.scale.multiplyScalar(1 + dt * 2);
+            }
+            for (let i = flashes.length - 1; i >= 0; i--) {
+                const f = flashes[i]; f.life -= dt;
+                if (f.life <= 0) { scene.remove(f.light); activeFlashLights = activeFlashLights.filter(l => l !== f.light); flashes.splice(i, 1); continue; }
+                f.light.intensity = f.life * 15;
+            }
+        }
+
+        function updateEnemies(dt) {
+            for (const t of tanks) {
+                if (t.destroyed) continue;
+
+                if (GAME_MODE === 'desant') {
+                    const playerDistFromCenter = Math.hypot(playerTank.position.x, playerTank.position.z);
+                    const playerInCity = playerDistFromCenter < CITY_RADIUS && !isFlying;
+
+                    if (!playerInCity && !t.revenge) {
+                        t.patrolAngle += t.patrolSpeed * dt;
+                        const px = t.patrolCenter.x + Math.cos(t.patrolAngle) * t.patrolRadius;
+                        const pz = t.patrolCenter.z + Math.sin(t.patrolAngle) * t.patrolRadius;
+                        t.group.position.set(px, getTerrainHeight(px, pz), pz);
+                        t.group.rotation.y += 0.3 * dt;
+                        continue;
+                    }
+
+                    let ct = null, cd = Infinity;
+                    if (!playerTank.destroyed && !isFlying) {
+                        const d = Math.hypot(playerTank.position.x - t.group.position.x, playerTank.position.z - t.group.position.z);
+                        if (d < cd) { cd = d; ct = playerTank.position; }
+                    }
+                    for (const a of allyTanks) {
+                        if (a.destroyed || a.isFlyingWithPlayer) continue;
+                        const d = Math.hypot(a.group.position.x - t.group.position.x, a.group.position.z - t.group.position.z);
+                        if (d < cd) { cd = d; ct = a.group.position; }
+                    }
+                    if (ct) {
+                        t.group.position.x += (ct.x - t.group.position.x) * Math.min(1, 0.5 * dt);
+                        t.group.position.z += (ct.z - t.group.position.z) * Math.min(1, 0.5 * dt);
+                        t.group.position.y = getTerrainHeight(t.group.position.x, t.group.position.z);
+                        const tr = Math.atan2(ct.x - t.group.position.x, ct.z - t.group.position.z);
+                        let diff = tr - t.group.rotation.y;
+                        while (diff > Math.PI) diff -= Math.PI*2;
+                        while (diff < -Math.PI) diff += Math.PI*2;
+                        t.group.rotation.y += diff * Math.min(1, 2.5 * dt);
+                        t.muzzle.getWorldPosition(t.muzzleWorldPos);
+                        t.muzzleWorldDir.set(0, 0, 1).applyAxisAngle(new THREE.Vector3(0,1,0), t.group.rotation.y).normalize();
+                        t.fireCooldown -= dt;
+                        if (t.fireCooldown <= 0 && cd < 150) {
+                            const toT = _v1.set(ct.x - t.group.position.x, 0, ct.z - t.group.position.z).normalize();
+                            const dot = toT.dot(t.muzzleWorldDir);
+                            if (dot > 0.97) { fireEnemyShell(t); t.fireCooldown = t.fireCooldownMax; }
+                        }
+                    }
+                    const hF = getTerrainHeight(t.group.position.x+2, t.group.position.z);
+                    const hB = getTerrainHeight(t.group.position.x-2, t.group.position.z);
+                    t.group.rotation.x = -Math.atan2(hF - hB, 4) * 0.5;
+                    continue;
+                }
+
+                if (GAME_MODE === 'defense') {
+                    let ct = null, cd = Infinity;
+                    if (!playerTank.destroyed && !isFlying) {
+                        const d = Math.hypot(playerTank.position.x - t.group.position.x, playerTank.position.z - t.group.position.z);
+                        if (d < cd) { cd = d; ct = playerTank.position; }
+                    }
+                    for (const a of allyTanks) {
+                        if (a.destroyed || a.isFlyingWithPlayer) continue;
+                        const d = Math.hypot(a.group.position.x - t.group.position.x, a.group.position.z - t.group.position.z);
+                        if (d < cd) { cd = d; ct = a.group.position; }
+                    }
+                    if (ct) {
+                        const dx = ct.x - t.group.position.x, dz = ct.z - t.group.position.z;
+                        const dist = Math.hypot(dx, dz);
+                        if (dist > 30) {
+                            const speed = 6 * (t.isTiger ? 0.7 : 1);
+                            t.group.position.x += (dx / dist) * speed * dt;
+                            t.group.position.z += (dz / dist) * speed * dt;
+                        }
+                        t.group.position.y = getTerrainHeight(t.group.position.x, t.group.position.z);
+                        const hF = getTerrainHeight(t.group.position.x+2, t.group.position.z);
+                        const hB = getTerrainHeight(t.group.position.x-2, t.group.position.z);
+                        t.group.rotation.x = -Math.atan2(hF - hB, 4) * 0.5;
+                        const tr = Math.atan2(ct.x - t.group.position.x, ct.z - t.group.position.z);
+                        let diff = tr - t.group.rotation.y;
+                        while (diff > Math.PI) diff -= Math.PI*2;
+                        while (diff < -Math.PI) diff += Math.PI*2;
+                        t.group.rotation.y += diff * Math.min(1, 2.5 * dt);
+                        t.muzzle.getWorldPosition(t.muzzleWorldPos);
+                        t.muzzleWorldDir.set(0, 0, 1).applyAxisAngle(new THREE.Vector3(0,1,0), t.group.rotation.y).normalize();
+                        t.fireCooldown -= dt;
+                        if (t.fireCooldown <= 0) {
+                            const toT = _v1.set(ct.x - t.group.position.x, 0, ct.z - t.group.position.z).normalize();
+                            const dot = toT.dot(t.muzzleWorldDir);
+                            if (dot > 0.97 && dist < 150) { fireEnemyShell(t); t.fireCooldown = t.fireCooldownMax; }
+                        }
+                    }
+                    continue;
+                }
+
+                t.patrolAngle += t.patrolSpeed * dt;
+                let tx, tz;
+                if (t.aggressive) {
+                    let ct = null, cd = Infinity;
+                    if (!playerTank.destroyed && !isFlying) {
+                        const d = Math.hypot(playerTank.position.x - t.group.position.x, playerTank.position.z - t.group.position.z);
+                        if (d < cd) { cd = d; ct = playerTank.position; }
+                    }
+                    for (const a of allyTanks) {
+                        if (a.destroyed || a.isFlyingWithPlayer) continue;
+                        const d = Math.hypot(a.group.position.x - t.group.position.x, a.group.position.z - t.group.position.z);
+                        if (d < cd) { cd = d; ct = a.group.position; }
+                    }
+                    if (ct) {
+                        const chaseSpeed = (GAME_MODE === 'solo' ? 0.15 : 0.2) * (t.isTiger ? 0.7 : 1);
+                        tx = t.group.position.x + (ct.x - t.group.position.x) * chaseSpeed * dt;
+                        tz = t.group.position.z + (ct.z - t.group.position.z) * chaseSpeed * dt;
+                        t.group.position.set(tx, getTerrainHeight(tx, tz), tz);
+                        const tr = Math.atan2(ct.x - t.group.position.x, ct.z - t.group.position.z);
+                        let diff = tr - t.group.rotation.y;
+                        while (diff > Math.PI) diff -= Math.PI*2;
+                        while (diff < -Math.PI) diff += Math.PI*2;
+                        t.group.rotation.y += diff * Math.min(1, 2.5 * dt);
+                        t.muzzle.getWorldPosition(t.muzzleWorldPos);
+                        t.muzzleWorldDir.set(0, 0, 1).applyAxisAngle(new THREE.Vector3(0,1,0), t.group.rotation.y).normalize();
+                        t.fireCooldown -= dt;
+                        const distToPlayer = Math.hypot(playerTank.position.x - t.group.position.x, playerTank.position.z - t.group.position.z);
+                        if (t.fireCooldown <= 0 && distToPlayer < 150) {
+                            const toT = _v1.set(ct.x - t.group.position.x, 0, ct.z - t.group.position.z).normalize();
+                            const dot = toT.dot(t.muzzleWorldDir);
+                            if (dot > 0.97) { fireEnemyShell(t); t.fireCooldown = t.fireCooldownMax; }
+                        }
+                    } else {
+                        tx = t.patrolCenter.x + Math.cos(t.patrolAngle)*t.patrolRadius;
+                        tz = t.patrolCenter.z + Math.sin(t.patrolAngle)*t.patrolRadius;
+                        t.group.position.set(tx, getTerrainHeight(tx, tz), tz);
+                    }
+                } else {
+                    tx = t.patrolCenter.x + Math.cos(t.patrolAngle)*t.patrolRadius;
+                    tz = t.patrolCenter.z + Math.sin(t.patrolAngle)*t.patrolRadius;
+                    t.group.position.set(tx, getTerrainHeight(tx, tz), tz);
+                }
+                const hF = getTerrainHeight(t.group.position.x+2, t.group.position.z);
+                const hB = getTerrainHeight(t.group.position.x-2, t.group.position.z);
+                t.group.rotation.x = -Math.atan2(hF - hB, 4) * 0.5;
+            }
+        }
+
+        function updateAllies(dt) {
+            for (const a of allyTanks) {
+                if (a.destroyed) continue;
+                if (isFlying) continue;
+                if (a.isFlyingWithPlayer) continue;
+
+                let ce = null, cd = Infinity;
+                for (const t of tanks) {
+                    if (t.destroyed) continue;
+                    const d = Math.hypot(t.group.position.x - a.group.position.x, t.group.position.z - a.group.position.z);
+                    if (d < cd) { cd = d; ce = t; }
+                }
+
+                let dirX = 0, dirZ = 0;
+                if (ce) {
+                    const ex = ce.group.position.x, ez = ce.group.position.z;
+                    const dx = ex - a.group.position.x, dz = ez - a.group.position.z;
+                    const dist = Math.hypot(dx, dz);
+                    if (ALLY_STRATEGY === 'smart') {
+                        if (dist > a.preferredDist + 10) { dirX = dx / (dist || 1); dirZ = dz / (dist || 1); }
+                        else if (dist < a.preferredDist - 10) { dirX = -dx / (dist || 1); dirZ = -dz / (dist || 1); }
+                        else { dirX = -dz / (dist || 1); dirZ = dx / (dist || 1); }
+                    } else {
+                        if (dist > 15) { dirX = dx / (dist || 1); dirZ = dz / (dist || 1); }
+                    }
+                } else if (GAME_MODE === 'defense' || GAME_MODE === 'desant') {
+                    const px = playerTank.position.x + Math.cos(a.flankOffset) * 12;
+                    const pz = playerTank.position.z + Math.sin(a.flankOffset) * 12;
+                    const dx = px - a.group.position.x, dz = pz - a.group.position.z;
+                    const dist = Math.hypot(dx, dz);
+                    if (dist > 5) { dirX = dx / dist; dirZ = dz / dist; }
+                } else {
+                    const angle = Date.now() * 0.001 + a.flankOffset;
+                    const px = playerTank.position.x + Math.cos(angle) * 25;
+                    const pz = playerTank.position.z + Math.sin(angle) * 25;
+                    const dx = px - a.group.position.x, dz = pz - a.group.position.z;
+                    const dist = Math.hypot(dx, dz);
+                    if (dist > 5) { dirX = dx / dist; dirZ = dz / dist; }
+                }
+
+                const moveSpeed = ALLY_BASE_SPEED * a.speedFactor;
+                const step = moveSpeed * dt;
+
+                let nx = a.group.position.x + dirX * step;
+                let nz = a.group.position.z + dirZ * step;
+
+                for (const b of buildings) {
+                    if (pointInBuilding(nx, nz, b)) { nx = a.group.position.x; nz = a.group.position.z; break; }
+                }
+                nx = Math.max(-MAP_LIMIT, Math.min(MAP_LIMIT, nx));
+                nz = Math.max(-MAP_LIMIT, Math.min(MAP_LIMIT, nz));
+                a.group.position.set(nx, getTerrainHeight(nx, nz), nz);
+
+                const hF = getTerrainHeight(nx + 2, nz);
+                const hB = getTerrainHeight(nx - 2, nz);
+                a.group.rotation.x = -Math.atan2(hF - hB, 4) * 0.5;
+
+                if (ce) {
+                    const tr = Math.atan2(ce.group.position.x - nx, ce.group.position.z - nz);
+                    let diff = tr - a.group.rotation.y;
+                    while (diff > Math.PI) diff -= Math.PI * 2;
+                    while (diff < -Math.PI) diff += Math.PI * 2;
+                    a.group.rotation.y += diff * Math.min(1, 3 * dt);
+
+                    a.muzzle.getWorldPosition(a.muzzleWorldPos);
+                    a.muzzleWorldDir.set(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), a.group.rotation.y).normalize();
+
+                    const toT = _v1.set(
+                        ce.group.position.x - a.group.position.x, 0,
+                        ce.group.position.z - a.group.position.z
+                    ).normalize();
+                    const dot = toT.dot(a.muzzleWorldDir);
+                    const de = Math.hypot(
+                        ce.group.position.x - a.group.position.x,
+                        ce.group.position.z - a.group.position.z
+                    );
+                    a.fireCooldown -= dt;
+                    if (a.fireCooldown <= 0 && dot > 0.96 && de < 140) {
+                        fireAllyShell(a);
+                        a.fireCooldown = a.fireCooldownMax;
+                    }
+                }
+            }
+        }
+
+        function checkPlayerCollision() {
+            if (isFlying) return;
+            for (const t of tanks) {
+                if (t.destroyed) continue;
+                const dx = playerTank.position.x - t.group.position.x, dz = playerTank.position.z - t.group.position.z;
+                if (dx*dx + dz*dz < 36) {
+                    const push = _v1.set(dx, 0, dz).normalize();
+                    playerTank.position.addScaledVector(push, 1.2);
+                    playerTank.position.x = Math.max(-MAP_LIMIT, Math.min(MAP_LIMIT, playerTank.position.x));
+                    playerTank.position.z = Math.max(-MAP_LIMIT, Math.min(MAP_LIMIT, playerTank.position.z));
+                    playerTank.position.y = getTerrainHeight(playerTank.position.x, playerTank.position.z);
+                }
+            }
+            for (const b of barrels) {
+                if (b.destroyed) continue;
+                const dx = playerTank.position.x - b.position.x, dz = playerTank.position.z - b.position.z;
+                if (dx*dx + dz*dz < (BARREL_RADIUS+2.5)*(BARREL_RADIUS+2.5)) {
+                    const push = _v1.set(dx, 0, dz).normalize();
+                    playerTank.position.addScaledVector(push, 1.2);
+                    playerTank.position.x = Math.max(-MAP_LIMIT, Math.min(MAP_LIMIT, playerTank.position.x));
+                    playerTank.position.z = Math.max(-MAP_LIMIT, Math.min(MAP_LIMIT, playerTank.position.z));
+                    playerTank.position.y = getTerrainHeight(playerTank.position.x, playerTank.position.z);
+                }
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = Math.min(clock.getDelta(), 0.05);
+            const active = (modeMenuEl.style.display === 'none' || modeMenuEl.style.display === '') &&
+                           (!customizePanelEl || !customizePanelEl.classList.contains('open')) && !playerTank.destroyed;
+            if (active) {
+                updatePlayer(dt);
+                updateBombSalvo(dt);
+                updateRockets(dt);
+                updateShells(dt);
+                updateExplosions(dt);
+                updateEnemies(dt);
+                if (allyTanks.length > 0) updateAllies(dt);
+                checkPlayerCollision();
+            } else if (!playerTank.destroyed) {
+                updateExplosions(dt);
+            }
+            fpsTime += dt; fpsFrames++;
+            if (fpsTime >= 0.5) { fpsEl.textContent = Math.round(fpsFrames/fpsTime); fpsTime = 0; fpsFrames = 0; }
+            renderer.render(scene, camera);
+        }
+
+        addEventListener('resize', () => {
+            camera.aspect = innerWidth / innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(innerWidth, innerHeight);
+        });
+
+        modeMenuEl.style.display = 'flex';
+        allyStrategyBlockEl.style.display = 'none';
+        animate();
+        console.log('Танковая стрелялка v4.8 — залп бомбовых ракет по ПКМ+ЛКМ в полёте, ракеты под крыльями, союзники по сторонам.');
+    </script>
+</body>
+</html>
